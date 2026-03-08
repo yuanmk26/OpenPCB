@@ -57,6 +57,18 @@ openpcb version
 
 ---
 
+### 1.4 当前状态说明（新增）
+
+本任务分解表在原计划基础上新增状态标记，状态定义如下：
+
+- `已完成`：对应任务的核心验收标准已满足
+- `进行中`：命令壳子/部分能力已就绪，但业务逻辑未完整落地
+- `未开始`：对应实现尚未落地
+
+状态基于当前仓库实际代码，而非仅按规划目标文件名判断。
+
+---
+
 ## 2. 推荐仓库目录结构
 
 ```text
@@ -170,6 +182,8 @@ openpcb/
 ### 任务列表
 
 #### M0-T1 创建仓库基础文件
+**状态**：`已完成`
+
 **文件：**
 - `README.md`
 - `LICENSE`
@@ -189,6 +203,8 @@ openpcb/
 ---
 
 #### M0-T2 搭建 CLI 框架
+**状态**：`已完成`
+
 **文件：**
 - `openpcb/cli/main.py`
 - `openpcb/__init__.py`
@@ -205,6 +221,8 @@ openpcb/
 ---
 
 #### M0-T3 搭建基础配置系统
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/config/settings.py`
 
@@ -223,6 +241,8 @@ openpcb/
 ---
 
 #### M0-T4 搭建日志与异常系统
+**状态**：`进行中`
+
 **文件：**
 - `openpcb/utils/logging.py`
 - `openpcb/utils/errors.py`
@@ -242,6 +262,8 @@ openpcb/
 ---
 
 #### M0-T5 搭建测试框架
+**状态**：`已完成`
+
 **文件：**
 - `tests/`
 - `tests/cli/test_version.py`
@@ -263,6 +285,8 @@ openpcb/
 ### 任务列表
 
 #### M1-T1 定义基础枚举
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/schema/enums.py`
 
@@ -280,6 +304,8 @@ openpcb/
 ---
 
 #### M1-T2 定义模块数据模型
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/schema/module.py`
 
@@ -299,6 +325,8 @@ openpcb/
 ---
 
 #### M1-T3 定义元件/引脚/网络模型
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/schema/component.py`
 - `openpcb/schema/net.py`
@@ -320,6 +348,8 @@ openpcb/
 ---
 
 #### M1-T4 定义项目级模型
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/schema/project.py`
 
@@ -349,6 +379,8 @@ openpcb/
 ### 任务列表
 
 #### M2-T1 实现项目脚手架生成
+**状态**：`已完成`
+
 **文件：**
 - `openpcb/cli/commands/init.py`
 - `openpcb/io/saver.py`
@@ -372,6 +404,8 @@ openpcb/
 ---
 
 #### M2-T2 生成默认 project.json
+**状态**：`已完成`
+
 **文件：**
 - `openpcb/io/saver.py`
 
@@ -392,6 +426,8 @@ openpcb/
 ### 任务列表
 
 #### M3-T1 设计 plan 输出格式
+**状态**：`未开始`
+
 **文件：**
 - `docs/cli-spec.md`
 
@@ -411,6 +447,8 @@ openpcb/
 ---
 
 #### M3-T2 实现需求预处理
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/agent/parser.py`
 - `openpcb/agent/tools/normalizer.py`
@@ -429,6 +467,8 @@ openpcb/
 ---
 
 #### M3-T3 实现 planner（先支持 mock 模式）
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/agent/planner.py`
 
@@ -446,6 +486,8 @@ openpcb/
 ---
 
 #### M3-T4 生成 plan.md
+**状态**：`进行中`
+
 **文件：**
 - `openpcb/cli/commands/plan.py`
 - `openpcb/io/saver.py`
@@ -468,6 +510,8 @@ openpcb/
 ---
 
 #### M3-T5 添加 plan 测试
+**状态**：`未开始`
+
 **文件：**
 - `tests/agent/test_planner.py`
 - `tests/cli/test_plan.py`
@@ -491,6 +535,8 @@ openpcb/
 ### 任务列表
 
 #### M4-T1 定义模板描述格式
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/pcb/templates/README.md`（可选）
 - 模板目录中的 JSON/YAML/Python 文件
@@ -510,6 +556,8 @@ openpcb/
 ---
 
 #### M4-T2 实现基础模板加载器
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/pcb/generators/project_builder.py`
 
@@ -526,6 +574,8 @@ openpcb/
 ---
 
 #### M4-T3 编写首批模板
+**状态**：`未开始`
+
 **建议首批模板：**
 - `power/usb_input`
 - `power/ldo_3v3`
@@ -543,6 +593,8 @@ openpcb/
 ---
 
 #### M4-T4 实现模板参数注入
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/pcb/generators/project_builder.py`
 
@@ -567,6 +619,8 @@ openpcb/
 ### 任务列表
 
 #### M5-T1 实现项目构建器
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/pcb/generators/project_builder.py`
 
@@ -583,6 +637,8 @@ openpcb/
 ---
 
 #### M5-T2 实现 schematic 级中间表示导出
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/pcb/generators/schematic_generator.py`
 
@@ -599,6 +655,8 @@ openpcb/
 ---
 
 #### M5-T3 实现 KiCad writer（先做最小版本）
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/pcb/generators/kicad_writer.py`
 
@@ -619,6 +677,8 @@ openpcb/
 ---
 
 #### M5-T4 实现 generate CLI 命令
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/cli/commands/generate.py`
 
@@ -646,6 +706,8 @@ output/
 ---
 
 #### M5-T5 实现 BOM / netlist 导出
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/io/exporters.py`
 
@@ -661,6 +723,8 @@ output/
 ---
 
 #### M5-T6 添加 generate 测试
+**状态**：`未开始`
+
 **文件：**
 - `tests/pcb/test_project_builder.py`
 - `tests/cli/test_generate.py`
@@ -685,6 +749,8 @@ output/
 ### 任务列表
 
 #### M6-T1 定义检查规则接口
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/pcb/rules/design_checks.py`
 
@@ -702,6 +768,8 @@ output/
 ---
 
 #### M6-T2 实现首批检查规则
+**状态**：`未开始`
+
 **建议规则：**
 1. MCU 电源脚未连接
 2. MCU 缺少去耦电容
@@ -719,6 +787,8 @@ output/
 ---
 
 #### M6-T3 实现 check CLI 命令
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/cli/commands/check.py`
 
@@ -742,6 +812,8 @@ openpcb check ./demo_project
 ---
 
 #### M6-T4 添加 check 测试
+**状态**：`未开始`
+
 **文件：**
 - `tests/pcb/test_design_checks.py`
 - `tests/cli/test_check.py`
@@ -765,6 +837,8 @@ openpcb check ./demo_project
 ### 任务列表
 
 #### M7-T1 设计 edit 输入输出格式
+**状态**：`未开始`
+
 **文件：**
 - `docs/cli-spec.md`
 
@@ -783,6 +857,8 @@ openpcb check ./demo_project
 ---
 
 #### M7-T2 实现 edit parser
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/agent/parser.py`
 - `openpcb/agent/planner.py`
@@ -800,6 +876,8 @@ openpcb check ./demo_project
 ---
 
 #### M7-T3 实现 ProjectSpec 修改器
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/agent/executor.py`
 
@@ -816,6 +894,8 @@ openpcb check ./demo_project
 ---
 
 #### M7-T4 实现 edit CLI 命令
+**状态**：`未开始`
+
 **文件：**
 - `openpcb/cli/commands/edit.py`
 
@@ -837,6 +917,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 #### M7-T5 添加 edit 测试
+**状态**：`未开始`
+
 **文件：**
 - `tests/agent/test_executor.py`
 - `tests/cli/test_edit.py`
@@ -861,6 +943,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ### 任务列表
 
 #### M8-T1 编写示例项目
+**状态**：`未开始`
+
 **目录：**
 - `examples/stm32_minimum/`
 - `examples/esp32_dev/`
@@ -879,6 +963,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 #### M8-T2 编写 README
+**状态**：`未开始`
+
 **文件：**
 - `README.md`
 
@@ -897,6 +983,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 #### M8-T3 编写架构文档
+**状态**：`未开始`
+
 **文件：**
 - `docs/architecture.md`
 
@@ -913,6 +1001,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 #### M8-T4 做 v0.1 发布检查
+**状态**：`未开始`
+
 **任务：**
 - 测试命令是否可运行
 - 测试 examples 是否可复现
@@ -929,9 +1019,13 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 
 下面给出更细的“文件 → 任务”列表，适合直接分配给 Codex。
 
+**命名偏差说明（新增）**：原计划中的 `openpcb/io/loader.py` 与 `openpcb/io/saver.py`，当前实现命名为 `openpcb/io/project_loader.py` 与 `openpcb/io/project_saver.py`。
+
 ---
 
 ## 6.1 `openpcb/cli/main.py`
+**当前状态**：`已完成`
+
 **任务：**
 - 创建 Typer app
 - 注册 `init / plan / generate / check / edit / version`
@@ -944,6 +1038,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.2 `openpcb/cli/commands/init.py`
+**当前状态**：`已完成`
+
 **任务：**
 - 接收项目名和目录参数
 - 创建项目结构
@@ -955,6 +1051,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.3 `openpcb/cli/commands/plan.py`
+**当前状态**：`进行中`
+
 **任务：**
 - 接收自然语言需求
 - 调用 parser/planner
@@ -966,6 +1064,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.4 `openpcb/cli/commands/generate.py`
+**当前状态**：`进行中`
+
 **任务：**
 - 读取 project.json
 - 调用 builder/generator/writer
@@ -977,6 +1077,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.5 `openpcb/cli/commands/check.py`
+**当前状态**：`进行中`
+
 **任务：**
 - 读取 project.json 或项目目录
 - 运行规则检查
@@ -988,6 +1090,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.6 `openpcb/cli/commands/edit.py`
+**当前状态**：`进行中`
+
 **任务：**
 - 接收 project.json 路径与编辑指令
 - 解析 edit action
@@ -999,6 +1103,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.7 `openpcb/agent/parser.py`
+**当前状态**：`未开始`
+
 **任务：**
 - 关键词抽取
 - 需求标准化
@@ -1010,6 +1116,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.8 `openpcb/agent/planner.py`
+**当前状态**：`未开始`
+
 **任务：**
 - mock planner
 - 规则映射模块
@@ -1021,6 +1129,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.9 `openpcb/agent/executor.py`
+**当前状态**：`未开始`
+
 **任务：**
 - 对 ProjectSpec 应用修改
 - 生成修改报告
@@ -1031,6 +1141,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.10 `openpcb/schema/project.py`
+**当前状态**：`未开始`
+
 **任务：**
 - 定义 ProjectSpec
 - 校验字段合法性
@@ -1042,6 +1154,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.11 `openpcb/pcb/generators/project_builder.py`
+**当前状态**：`未开始`
+
 **任务：**
 - 根据模块挑模板
 - 实例化组件
@@ -1054,6 +1168,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.12 `openpcb/pcb/generators/schematic_generator.py`
+**当前状态**：`未开始`
+
 **任务：**
 - 将逻辑结构整理为原理图表示
 - 为 writer 提供中间对象
@@ -1064,6 +1180,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.13 `openpcb/pcb/generators/kicad_writer.py`
+**当前状态**：`未开始`
+
 **任务：**
 - 输出合法 KiCad 文件
 - 封装文件写入逻辑
@@ -1074,6 +1192,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.14 `openpcb/pcb/rules/design_checks.py`
+**当前状态**：`未开始`
+
 **任务：**
 - 规则抽象
 - 检查执行器
@@ -1085,6 +1205,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.15 `openpcb/io/loader.py`
+**当前状态**：`已完成（当前实现文件为 `openpcb/io/project_loader.py`）`
+
 **任务：**
 - 从 JSON 加载 ProjectSpec
 - 自动检测路径类型
@@ -1095,6 +1217,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.16 `openpcb/io/saver.py`
+**当前状态**：`已完成（当前实现文件为 `openpcb/io/project_saver.py`）`
+
 **任务：**
 - 保存 project.json
 - 保存 plan.md
@@ -1106,6 +1230,8 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 ---
 
 ## 6.17 `openpcb/io/exporters.py`
+**当前状态**：`未开始`
+
 **任务：**
 - 导出 BOM
 - 导出 netlist
@@ -1181,14 +1307,14 @@ openpcb edit project.json "增加一个3.3V LDO，并添加状态LED"
 
 当以下条件全部满足时，可认为 OpenPCB CLI v0.1 完成：
 
-- [ ] `openpcb init` 可创建项目
+- [x] `openpcb init` 可创建项目
 - [ ] `openpcb plan "<需求>"` 可生成 `project.json` 和 `plan.md`
 - [ ] `openpcb generate project.json` 可生成最小 KiCad 工程
 - [ ] `openpcb check` 可输出规则检查报告
 - [ ] `openpcb edit` 可完成简单项目修改
 - [ ] 至少 3 个 demo 可复现
 - [ ] README 足够让他人上手
-- [ ] 关键路径有基础测试覆盖
+- [ ] 关键路径有基础测试覆盖（当前仅 `help/version/init`）
 
 ---
 
