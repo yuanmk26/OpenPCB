@@ -11,4 +11,5 @@ def test_root_help_lists_core_commands() -> None:
     assert "init" in result.stdout
     assert "plan" in result.stdout
     assert "build" in result.stdout
+    assert "chat" in result.stdout
     assert "version" in result.stdout

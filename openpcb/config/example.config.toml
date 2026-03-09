@@ -6,3 +6,9 @@ base_url = "https://api.openai.com/v1/chat/completions"
 timeout = 30.0
 max_retries = 1
 use_mock_planner = false
+
+# DeepSeek example (OpenAI-compatible API):
+# provider = "deepseek"
+# model = "deepseek-chat"
+# api_key = "YOUR_DEEPSEEK_API_KEY"
+# base_url = "https://api.deepseek.com/chat/completions"

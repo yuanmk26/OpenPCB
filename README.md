@@ -254,3 +254,52 @@ d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --projec
 ```
 
 > 安全提示：`openpcb.config.toml` 已加入 `.gitignore`，不要把真实 key 提交到仓库。
+
+### DeepSeek 快速配置
+
+如果你先试 DeepSeek API，可将本地配置改为：
+
+```toml
+provider = "deepseek"
+model = "deepseek-chat"
+api_key = "YOUR_DEEPSEEK_API_KEY"
+# base_url 可省略，默认会使用 https://api.deepseek.com/chat/completions
+use_mock_planner = false
+```
+
+运行示例：
+
+```powershell
+d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo --config openpcb.config.toml --provider deepseek --model deepseek-chat
+```
+
+## 交互式使用（REPL）
+
+你可以使用 `openpcb chat` 进入交互式模式，在同一会话内连续执行 `plan/build/check/edit`。
+
+```powershell
+d:\anaconda3\python.exe -m openpcb chat --project-dir demo --project-name demo --config openpcb.config.toml
+```
+
+会话内支持：
+
+- 直接输入自然语言：执行 `plan`
+- `/build`：执行构建
+- `/check`：执行检查
+- `/edit <instruction>`：执行修改
+- `/status`：查看当前会话状态
+- `/help`：查看命令
+- `/exit`：退出会话
+
+示例会话：
+
+```text
+openpcb> design stm32 with usb and led
+openpcb> /build
+openpcb> /check
+openpcb> /edit add one more led
+openpcb> /build
+openpcb> /exit
+```
+
+会话日志会写入：`<project_dir>/logs/session-*.jsonl`。

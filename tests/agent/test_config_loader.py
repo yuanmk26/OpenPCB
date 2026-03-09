@@ -28,3 +28,13 @@ def test_load_invalid_provider_fails() -> None:
     with pytest.raises(Exception):
         load_agent_settings(path)
     path.unlink()
+
+
+def test_load_deepseek_defaults() -> None:
+    path = Path("tmp-openpcb.config.toml")
+    path.write_text("provider = \"deepseek\"\napi_key = \"k\"\n", encoding="utf-8")
+    settings = load_agent_settings(path)
+    assert settings.provider == "deepseek"
+    assert settings.model == "deepseek-chat"
+    assert settings.base_url == "https://api.deepseek.com/chat/completions"
+    path.unlink()

@@ -1,4 +1,4 @@
-# OpenPCB TODO List (Agent-First)
+﻿# OpenPCB TODO List (Agent-First)
 
 > 主任务源文件。  
 > 目标：以单 Agent 循环 + 工具调用方式，完成 `init -> plan -> build -> check -> edit -> build` 可回放闭环。
@@ -226,7 +226,7 @@
 - 验收标准：缺 key 且未开启 mock 时，`plan` 明确报错退出
 - 测试点：`tests/agent/test_config_loader.py`
 
-### G2 OpenAI Client
+### G2 OpenAI-Compatible Client（OpenAI/DeepSeek）
 - 状态：`进行中`
 - 输入：planner prompt + requirement
 - 输出：可解析的 JSON 文本响应
@@ -257,3 +257,48 @@
 - 依赖：G1, G2, G3, G4
 - 验收标准：`openpcb.config.toml` 不入库，核心模型路径有测试覆盖
 - 测试点：`tests/agent/*` + `tests/cli/*`
+
+
+---
+
+## Milestone H: Interactive CLI
+
+### H1 chat 命令骨架
+- 状态：`进行中`
+- 输入：`openpcb chat --project-dir <dir> [--config ...]`
+- 输出：可持续输入的 REPL 会话
+- 依赖：B3, C1, D3, E3
+- 验收标准：支持自然语言 plan 与 `/help` `/exit`
+- 测试点：`tests/cli/test_chat.py`
+
+### H2 会话状态与日志
+- 状态：`进行中`
+- 输入：会话动作序列
+- 输出：`logs/session-*.jsonl` + 内存状态对象
+- 依赖：H1
+- 验收标准：可记录 session_id、项目路径、动作历史、结果摘要
+- 测试点：`tests/agent/test_session.py`
+
+### H3 交互动作路由（plan/build/check/edit）
+- 状态：`进行中`
+- 输入：REPL 指令（文本、`/build`、`/check`、`/edit ...`）
+- 输出：对应 runtime 执行结果
+- 依赖：H1, H2
+- 验收标准：用户可在单会话手动推进完整链路
+- 测试点：`tests/cli/test_chat.py::test_chat_sequence_plan_build_check_exit`
+
+### H4 可用性与错误恢复
+- 状态：`进行中`
+- 输入：异常场景（未 plan 即 build、模型失败）
+- 输出：清晰提示且会话不中断
+- 依赖：H3
+- 验收标准：错误不导致 REPL 崩溃，允许继续输入或退出
+- 测试点：`tests/cli/test_chat.py::test_chat_build_before_plan_shows_hint`
+
+### H5 交互文档与示例
+- 状态：`进行中`
+- 输入：chat 命令行为
+- 输出：README 交互式使用小节与示例
+- 依赖：H1-H4
+- 验收标准：新用户可按文档完成一次交互式会话
+- 测试点：README 命令 smoke

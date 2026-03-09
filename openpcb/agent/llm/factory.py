@@ -8,6 +8,6 @@ from openpcb.agent.llm.types import LLMError
 
 
 def get_llm_client(provider: str) -> LLMClient:
-    if provider == "openai":
+    if provider in {"openai", "deepseek"}:
         return OpenAIClient()
     raise LLMError(f"Unsupported provider: {provider}")
