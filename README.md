@@ -209,3 +209,48 @@ d:\anaconda3\python.exe -m openpcb ...
 ```
 
 避免直接用裸 `openpcb ...`，可减少旧环境干扰。
+
+## 模型接入配置（OpenAI）
+
+`openpcb plan` 默认走 LLM 规划器（不自动回退 mock）。
+如果未配置 API Key，会直接报错并退出。
+
+### 1) 创建本地配置文件
+
+复制示例配置：
+
+```powershell
+copy openpcb\config\example.config.toml openpcb.config.toml
+```
+
+编辑 `openpcb.config.toml`：
+
+```toml
+provider = "openai"
+model = "gpt-4o-mini"
+api_key = "YOUR_OPENAI_API_KEY"
+base_url = "https://api.openai.com/v1/chat/completions"
+timeout = 30.0
+max_retries = 1
+use_mock_planner = false
+```
+
+### 2) 运行 plan（使用配置文件）
+
+```powershell
+d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo --config openpcb.config.toml
+```
+
+### 3) 临时切换模型参数
+
+```powershell
+d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo --config openpcb.config.toml --provider openai --model gpt-4o-mini
+```
+
+### 4) 仅用于测试：强制 mock planner
+
+```powershell
+d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo --use-mock-planner
+```
+
+> 安全提示：`openpcb.config.toml` 已加入 `.gitignore`，不要把真实 key 提交到仓库。

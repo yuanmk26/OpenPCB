@@ -213,3 +213,47 @@
 - [ ] `openpcb edit` 完成结构化增量修改（当前为规则版）
 - [ ] 至少 3 个 demo 可复现
 - [ ] 关键路径具备完整测试覆盖（当前覆盖 init/plan/build/generate）
+
+---
+
+## Milestone G: Model Integration
+
+### G1 LLM 配置层
+- 状态：`进行中`
+- 输入：`openpcb.config.toml`
+- 输出：运行时可读配置对象（provider/model/api_key/base_url/timeout/max_retries）
+- 依赖：A3
+- 验收标准：缺 key 且未开启 mock 时，`plan` 明确报错退出
+- 测试点：`tests/agent/test_config_loader.py`
+
+### G2 OpenAI Client
+- 状态：`进行中`
+- 输入：planner prompt + requirement
+- 输出：可解析的 JSON 文本响应
+- 依赖：G1
+- 验收标准：请求成功可返回 content/token，HTTP 错误可映射为结构化异常
+- 测试点：`tests/agent/test_openai_client.py`
+
+### G3 Planner JSON 约束与解析
+- 状态：`进行中`
+- 输入：LLM 原始文本
+- 输出：`ProjectSpec`
+- 依赖：G2
+- 验收标准：非法 JSON 明确报错，合法 JSON 可通过 schema 校验
+- 测试点：`tests/agent/test_planner_json_parse.py`
+
+### G4 Runtime/CLI 接入
+- 状态：`进行中`
+- 输入：`openpcb plan ...`
+- 输出：真实模型规划结果 + trace（含 provider/model/token/latency）
+- 依赖：G3
+- 验收标准：支持 `--provider --model --config`；失败直接退出（无 mock 自动回退）
+- 测试点：`tests/cli/test_plan_build.py::test_plan_without_api_key_fails`
+
+### G5 测试与安全
+- 状态：`进行中`
+- 输入：mock client/失败场景
+- 输出：单测覆盖 + `.gitignore` 密钥保护
+- 依赖：G1, G2, G3, G4
+- 验收标准：`openpcb.config.toml` 不入库，核心模型路径有测试覆盖
+- 测试点：`tests/agent/*` + `tests/cli/*`

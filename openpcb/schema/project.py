@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from openpcb.schema.component import ComponentSpec
@@ -18,4 +20,4 @@ class ProjectSpec(BaseModel):
     nets: list[NetSpec] = Field(default_factory=list)
     constraints: list[str] = Field(default_factory=list)
     artifacts: dict[str, str] = Field(default_factory=dict)
-    metadata: dict[str, str] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)

@@ -1,0 +1,8 @@
+# Copy to `openpcb.config.toml` for local usage.
+provider = "openai"
+model = "gpt-4o-mini"
+api_key = "YOUR_OPENAI_API_KEY"
+base_url = "https://api.openai.com/v1/chat/completions"
+timeout = 30.0
+max_retries = 1
+use_mock_planner = false

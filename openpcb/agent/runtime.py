@@ -13,7 +13,8 @@ from openpcb.agent.checker import run_checks
 from openpcb.agent.executor import apply_edit
 from openpcb.agent.models import AgentContext, AgentTaskType, RunResult, ToolResult
 from openpcb.agent.parser import parse_requirement
-from openpcb.agent.planner import build_project_spec
+from openpcb.agent.planner import build_project_spec, build_project_spec_with_llm
+from openpcb.config.loader import load_agent_settings
 from openpcb.io.project_loader import load_project, resolve_project_json_path
 from openpcb.io.project_saver import save_json, save_text
 from openpcb.utils.errors import InputError
@@ -75,18 +76,19 @@ class AgentRuntime:
         elapsed_ms: int,
         attempt: int,
     ) -> None:
-        context.trace_events.append(
-            {
-                "ts": datetime.now(timezone.utc).isoformat(),
-                "phase": "reflect",
-                "step": step_name,
-                "attempt": attempt,
-                "ok": result.ok,
-                "message": result.message,
-                "error": result.error,
-                "elapsed_ms": elapsed_ms,
-            }
-        )
+        event = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "phase": "reflect",
+            "step": step_name,
+            "attempt": attempt,
+            "ok": result.ok,
+            "message": result.message,
+            "error": result.error,
+            "elapsed_ms": elapsed_ms,
+        }
+        if "llm_meta" in result.data:
+            event["llm_meta"] = result.data["llm_meta"]
+        context.trace_events.append(event)
 
     def _finalize(self, context: AgentContext) -> Path:
         log_dir = Path(context.options.get("log_dir", "logs"))
@@ -126,9 +128,30 @@ class AgentRuntime:
             return ToolResult(ok=False, error="Missing intent payload.", message="plan_failed")
         requirement = str(intent_payload.get("requirement", ""))
         project_name = str(context.options.get("project_name", "openpcb_project"))
-        intent = parse_requirement(requirement)
-        spec = build_project_spec(intent=intent, project_name=project_name)
-        return ToolResult(ok=True, data={"project": spec.model_dump()}, message="project_planned")
+        settings = load_agent_settings(
+            config_path=context.options.get("config_path"),
+            overrides={
+                "provider": context.options.get("provider"),
+                "model": context.options.get("model"),
+                "use_mock_planner": context.options.get("use_mock_planner"),
+            },
+        )
+
+        if settings.use_mock_planner:
+            intent = parse_requirement(requirement)
+            spec = build_project_spec(intent=intent, project_name=project_name)
+            llm_meta = {"provider": "mock", "model": "rule-mock-v1", "token_usage": None, "latency_ms": 0}
+        else:
+            spec, llm_meta = build_project_spec_with_llm(
+                requirement=requirement,
+                project_name=project_name,
+                settings=settings,
+            )
+        return ToolResult(
+            ok=True,
+            data={"project": spec.model_dump(), "llm_meta": llm_meta},
+            message="project_planned",
+        )
 
     def _save_plan_tool(self, context: AgentContext) -> ToolResult:
         project = context.state.get("project")
@@ -139,11 +162,20 @@ class AgentRuntime:
         project_json_path = project_dir / "project.json"
         plan_md_path = project_dir / "plan.md"
         summary = "\n".join(f"- {mod['name']}" for mod in project.get("modules", []))
+        llm_meta = context.state.get("llm_meta", {})
+        llm_info = (
+            f"- provider: {llm_meta.get('provider', 'unknown')}\n"
+            f"- model: {llm_meta.get('model', 'unknown')}\n"
+            f"- latency_ms: {llm_meta.get('latency_ms', 'n/a')}\n"
+            f"- token_usage: {llm_meta.get('token_usage', 'n/a')}\n"
+        )
         plan_md = (
             f"# {project.get('name', 'Project')} Plan\n\n"
             f"## Requirement\n{project.get('requirements', '')}\n\n"
             "## Modules\n"
-            f"{summary if summary else '- none'}\n"
+            f"{summary if summary else '- none'}\n\n"
+            "## Planner Runtime\n"
+            f"{llm_info}"
         )
         save_json(project_json_path, project)
         save_text(plan_md_path, plan_md)

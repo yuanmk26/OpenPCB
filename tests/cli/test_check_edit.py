@@ -7,7 +7,13 @@ from openpcb.cli.main import app
 runner = CliRunner()
 
 
+def _write_mock_config(path: Path) -> None:
+    path.write_text("use_mock_planner = true\nprovider = \"openai\"\nmodel = \"gpt-4o-mini\"\n", encoding="utf-8")
+
+
 def _prepare_project() -> None:
+    config_path = Path("openpcb.config.toml")
+    _write_mock_config(config_path)
     runner.invoke(app, ["init", "demo_board"])
     runner.invoke(
         app,
@@ -18,6 +24,8 @@ def _prepare_project() -> None:
             "demo_board",
             "--project-dir",
             "demo_board",
+            "--config",
+            str(config_path),
         ],
     )
 

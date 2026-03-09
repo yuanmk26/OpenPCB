@@ -137,6 +137,7 @@ celerybeat.pid
 # Environments
 .env
 .envrc
+openpcb.config.toml
 .venv
 env/
 venv/
