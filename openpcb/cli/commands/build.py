@@ -1,4 +1,6 @@
-"""Placeholder for `openpcb check`."""
+"""Implementation of `openpcb build` command."""
+
+from __future__ import annotations
 
 from pathlib import Path
 
@@ -14,10 +16,11 @@ def command(
     retries: int = typer.Option(1, "--retries", help="Retry count for failed runtime steps."),
     step_budget: int = typer.Option(8, "--step-budget", help="Maximum runtime steps."),
 ) -> None:
+    """Build project artifacts from project.json."""
     runtime = AgentRuntime()
     try:
         result = runtime.run(
-            task_type=AgentTaskType.CHECK,
+            task_type=AgentTaskType.BUILD,
             input_payload={"source": str(source)},
             options={"retries": retries, "step_budget": step_budget},
         )
@@ -26,16 +29,15 @@ def command(
         raise typer.Exit(code=2) from exc
 
     if not result.ok:
-        typer.echo(f"Check failed: {result.error}", err=True)
+        typer.echo(f"Build failed: {result.error}", err=True)
         if result.trace_file:
             typer.echo(f"Trace: {result.trace_file}", err=True)
         raise typer.Exit(code=3)
 
-    check_result = result.outputs.get("check_result", {})
-    typer.echo(
-        f"Check completed. errors={len(check_result.get('errors', []))}, "
-        f"warnings={len(check_result.get('warnings', []))}"
-    )
-    typer.echo(f"Report: {check_result.get('report')}")
+    artifacts = result.outputs.get("artifacts", {})
+    typer.echo("Build completed.")
+    for key in ["kicad_pro", "kicad_sch", "bom", "netlist", "report"]:
+        if key in artifacts:
+            typer.echo(f"- {key}: {artifacts[key]}")
     if result.trace_file:
         typer.echo(f"Trace: {result.trace_file}")

@@ -145,3 +145,67 @@ tests/         # 测试
 - 生成出的 KiCad 文件示例
 - 支持的模块模板清单
 - 已实现/未实现能力对照表
+
+## 使用本地最新版本（推荐）
+
+为避免系统里旧的 `openpcb.exe` 干扰，建议优先使用下面两种方式运行当前仓库源码版本。
+
+### 方式 1：直接用 Python 模块入口
+
+```powershell
+# 查看当前源码版本
+d:\anaconda3\python.exe -m openpcb version
+
+# 查看命令帮助
+d:\anaconda3\python.exe -m openpcb --help
+
+# 执行 plan / build
+d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo
+d:\anaconda3\python.exe -m openpcb build demo
+```
+
+### 方式 2：使用本地运行脚本
+
+```powershell
+# 仅运行（不重新安装）
+powershell -ExecutionPolicy Bypass -File scripts\use-local-openpcb.ps1 -SkipInstall version
+
+# 运行任意命令
+powershell -ExecutionPolicy Bypass -File scripts\use-local-openpcb.ps1 -SkipInstall plan "design stm32 with usb and led" --project-name demo --project-dir demo
+powershell -ExecutionPolicy Bypass -File scripts\use-local-openpcb.ps1 -SkipInstall build demo
+```
+
+### 验证当前是否命中本地源码
+
+```powershell
+d:\anaconda3\python.exe -c "import openpcb,sys;print(sys.executable);print(openpcb.__file__);print(openpcb.__version__)"
+```
+
+输出中的 `openpcb.__file__` 应指向当前仓库路径，例如 `E:\projects\3-Ai-agent\OpenPCB\openpcb\__init__.py`。
+
+### 方式 3：彻底切换到当前版本（推荐用于出现旧参数时）
+
+当你看到类似 `No such option: --project-name` 这类“新参数不存在”的报错时，通常是命中了旧安装包。按下面步骤强制切换：
+
+```powershell
+# 1) 卸载旧版本（执行两次更稳妥）
+d:\anaconda3\python.exe -m pip uninstall -y openpcb
+d:\anaconda3\python.exe -m pip uninstall -y openpcb
+
+# 2) 回到仓库根目录，安装当前源码
+cd E:\projects\3-Ai-agent\OpenPCB
+d:\anaconda3\python.exe -m pip install -e .
+
+# 3) 验证是否命中当前源码
+d:\anaconda3\python.exe -m pip show openpcb
+d:\anaconda3\python.exe -c "import openpcb,sys;print(sys.executable);print(openpcb.__file__);print(openpcb.__version__)"
+d:\anaconda3\python.exe -m openpcb plan --help
+```
+
+建议后续固定使用：
+
+```powershell
+d:\anaconda3\python.exe -m openpcb ...
+```
+
+避免直接用裸 `openpcb ...`，可减少旧环境干扰。

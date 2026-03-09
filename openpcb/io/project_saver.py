@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from openpcb import __version__
 from openpcb.utils.errors import SaveError
 
 
@@ -20,7 +21,7 @@ def build_default_project(project_name: str, requirement_text: str = "") -> dict
         "nets": [],
         "constraints": [],
         "artifacts": {},
-        "metadata": {"version": "0.1.0a0"},
+        "metadata": {"version": __version__},
     }
 
 

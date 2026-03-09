@@ -10,4 +10,5 @@ def test_root_help_lists_core_commands() -> None:
     assert result.exit_code == 0
     assert "init" in result.stdout
     assert "plan" in result.stdout
+    assert "build" in result.stdout
     assert "version" in result.stdout

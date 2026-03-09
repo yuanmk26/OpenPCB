@@ -5,7 +5,7 @@ from __future__ import annotations
 import typer
 
 from openpcb import __version__
-from openpcb.cli.commands import check, edit, generate, init, plan
+from openpcb.cli.commands import build, check, edit, generate, init, plan
 
 app = typer.Typer(
     add_completion=False,
@@ -32,6 +32,7 @@ def version_command() -> None:
 
 app.command("init")(init.command)
 app.command("plan")(plan.command)
+app.command("build")(build.command)
 app.command("generate")(generate.command)
 app.command("check")(check.command)
 app.command("edit")(edit.command)

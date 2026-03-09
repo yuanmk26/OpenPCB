@@ -1,0 +1,13 @@
+{
+  "name": "mytest",
+  "description": "",
+  "requirements": "",
+  "modules": [],
+  "components": [],
+  "nets": [],
+  "constraints": [],
+  "artifacts": {},
+  "metadata": {
+    "version": "0.1.0a0"
+  }
+}
