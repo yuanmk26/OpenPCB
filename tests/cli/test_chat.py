@@ -119,11 +119,11 @@ def test_chat_requirement_text_requires_confirmation_before_plan() -> None:
         )
         assert result.exit_code == 0
         assert "已识别需求：单片机核心板（STM32）" in result.stdout
-        assert "是否按这个方向开始规划？输入 /yes 继续，输入 /no 取消。" in result.stdout
+        assert "是否进入架构信息补全？输入 /yes 继续，输入 /no 取消。" in result.stdout
         assert not (Path("demo") / "project.json").exists()
 
 
-def test_chat_requirement_text_yes_runs_plan() -> None:
+def test_chat_requirement_text_yes_enters_brief_collection() -> None:
     with runner.isolated_filesystem():
         config = Path("openpcb.config.toml")
         _write_mock_config(config)
@@ -139,20 +139,78 @@ def test_chat_requirement_text_yes_runs_plan() -> None:
         )
         assert result.exit_code == 0
         assert "已识别需求：单片机核心板（STM32）" in result.stdout
-        assert "已完成：`plan`。" in result.stdout
-        assert (Path("demo") / "project.json").exists()
-        project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
-        classification = project.get("metadata", {}).get("classification", {})
-        assert classification.get("board_class") == "mcu_core"
-        assert classification.get("board_family") == "stm32"
+        assert "先补全架构信息，再进入规划流程。" in result.stdout
+        assert "问题 1/6：" in result.stdout
+        assert not (Path("demo") / "project.json").exists()
 
 
-def test_chat_requirement_text_no_cancels_pending_plan() -> None:
+def test_chat_brief_gate_blocks_plan_until_complete() -> None:
     with runner.isolated_filesystem():
         config = Path("openpcb.config.toml")
         _write_mock_config(config)
         user_input = (
             "\u6211\u60f3\u8bbe\u8ba1\u4e00\u4e2aSTM32\u6838\u5fc3\u677f\n"
+            "/yes\n"
+            "\u63a7\u5236\u548c\u901a\u4fe1\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "还不能开始规划，仍缺少：" in result.stdout
+        assert "问题 2/6：" in result.stdout
+        assert not (Path("demo") / "project.json").exists()
+
+
+def test_chat_requirement_text_brief_complete_then_yes_runs_plan() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "\u6211\u60f3\u8bbe\u8ba1\u4e00\u4e2aSTM32\u6838\u5fc3\u677f\n"
+            "/yes\n"
+            "\u7528\u4e8e\u673a\u5668\u4eba\u63a7\u5236\u4e3b\u677f\n"
+            "USB 5V \u4f9b\u7535\n"
+            "USB UART CAN SPI\n"
+            "\u4e3b\u9891 168MHz\uff0c\u4f4e\u529f\u8017\n"
+            "80x60mm\uff0c\u56db\u5c42\u677f\n"
+            "\u5e73\u8861\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "架构信息已补全，可输入 /yes 开始规划。" in result.stdout
+        assert "已完成：`plan`。" in result.stdout
+        assert (Path("demo") / "project.json").exists()
+        project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
+        classification = project.get("metadata", {}).get("classification", {})
+        brief = project.get("metadata", {}).get("architecture_brief", {})
+        assert classification.get("board_class") == "mcu_core"
+        assert classification.get("board_family") == "stm32"
+        assert brief.get("board_goal")
+        assert brief.get("power_input")
+        assert brief.get("key_interfaces")
+        assert brief.get("performance_constraints")
+        assert brief.get("size_constraints")
+        assert brief.get("cost_priority")
+
+
+def test_chat_requirement_text_no_cancels_during_brief() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "\u6211\u60f3\u8bbe\u8ba1\u4e00\u4e2aSTM32\u6838\u5fc3\u677f\n"
+            "/yes\n"
             "/no\n"
             "/exit\n"
         )
@@ -162,6 +220,5 @@ def test_chat_requirement_text_no_cancels_pending_plan() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "已识别需求：单片机核心板（STM32）" in result.stdout
         assert "Cancelled pending `plan`." in result.stdout
         assert not (Path("demo") / "project.json").exists()

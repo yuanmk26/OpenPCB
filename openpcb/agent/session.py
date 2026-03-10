@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from openpcb.agent.brief_collector import BRIEF_REQUIRED_FIELDS
 from openpcb.agent.models import AgentTaskType
 
 DEFAULT_MODE = "system_architecture"
@@ -41,6 +42,10 @@ class ChatSession:
     last_plan: dict[str, Any] | None = None
     last_artifacts: dict[str, Any] | None = None
     pending_action: PendingAction | None = None
+    architecture_brief: dict[str, str] = field(default_factory=dict)
+    brief_required_fields: list[str] = field(default_factory=lambda: list(BRIEF_REQUIRED_FIELDS))
+    brief_pending_field: str | None = None
+    brief_completed: bool = False
     last_user_goal: str | None = None
     last_decision: dict[str, Any] | None = None
     last_result_summary: dict[str, Any] | None = None
@@ -95,6 +100,12 @@ class ChatSession:
     def clear_chat(self) -> None:
         self.chat_messages = []
         self.clear_pending_action()
+
+    def clear_brief_state(self, *, keep_answers: bool = True) -> None:
+        if not keep_answers:
+            self.architecture_brief = {}
+        self.brief_pending_field = None
+        self.brief_completed = False
 
     def set_mode(self, mode: str, *, source: str = "system") -> None:
         if mode == self.current_mode:

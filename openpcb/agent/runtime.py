@@ -117,6 +117,7 @@ class AgentRuntime:
             return ToolResult(ok=False, error="Requirement cannot be empty.", message="intent_parse_failed")
         intent = parse_requirement(requirement)
         classification = context.state.get("classification")
+        architecture_brief = context.state.get("architecture_brief")
         return ToolResult(
             ok=True,
             data={
@@ -125,6 +126,7 @@ class AgentRuntime:
                     "board_family": intent.board_family,
                     "modules": intent.modules,
                     "classification": classification,
+                    "architecture_brief": architecture_brief,
                 }
             },
             message="intent_parsed",
@@ -136,6 +138,7 @@ class AgentRuntime:
             return ToolResult(ok=False, error="Missing intent payload.", message="plan_failed")
         requirement = str(intent_payload.get("requirement", ""))
         classification = intent_payload.get("classification")
+        architecture_brief = intent_payload.get("architecture_brief")
         project_name = str(context.options.get("project_name", "openpcb_project"))
         settings = load_agent_settings(
             config_path=context.options.get("config_path"),
@@ -158,6 +161,8 @@ class AgentRuntime:
             )
         if classification:
             spec.metadata["classification"] = classification
+        if architecture_brief:
+            spec.metadata["architecture_brief"] = architecture_brief
         return ToolResult(
             ok=True,
             data={"project": spec.model_dump(), "llm_meta": llm_meta},

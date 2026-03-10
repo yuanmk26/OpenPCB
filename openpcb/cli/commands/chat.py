@@ -6,6 +6,7 @@ from pathlib import Path
 
 import typer
 
+from openpcb.agent.brief_collector import ArchitectureBriefCollector
 from openpcb.agent.chat_agent import ChatAgent
 from openpcb.agent.classifier import RequirementClassifier
 from openpcb.agent.llm.types import LLMError
@@ -25,6 +26,9 @@ from openpcb.config.loader import load_agent_settings
 from openpcb.utils.errors import InputError, OpenPCBError
 
 CLASSIFICATION_CONFIRM_THRESHOLD = 0.6
+BRIEF_STAGE_CLASSIFIED = "classified"
+BRIEF_STAGE_COLLECTING = "brief_collecting"
+BRIEF_STAGE_READY = "ready_to_plan"
 
 
 def _print_lines(lines: list[str], err: bool = False) -> None:
@@ -81,6 +85,110 @@ def _board_class_label(board_class: str) -> str:
     return mapping.get(board_class, board_class)
 
 
+def _pending_stage(session: ChatSession) -> str | None:
+    if session.pending_action is None:
+        return None
+    stage = session.pending_action.metadata.get("flow_stage")
+    return stage if isinstance(stage, str) else None
+
+
+def _brief_missing_labels(session: ChatSession) -> str:
+    collector = ArchitectureBriefCollector()
+    labels = [collector.label_for(field) for field in collector.missing_fields(session.architecture_brief)]
+    return "、".join(labels)
+
+
+def _start_brief_collection(session: ChatSession, classification: dict[str, str | float | bool]) -> None:
+    collector = ArchitectureBriefCollector()
+    result = collector.collect(
+        board_class=str(classification.get("board_class", "other")),
+        board_family=str(classification.get("board_family", "generic")),
+        user_text="",
+        brief=session.architecture_brief,
+        pending_field=None,
+    )
+    session.architecture_brief = result.updated_brief
+    session.brief_completed = result.is_complete
+    if result.is_complete:
+        session.brief_pending_field = None
+        pending = PendingAction(
+            action_route=AgentTaskType.PLAN,
+            payload=str(session.pending_action.payload if session.pending_action else ""),
+            user_goal="classified_plan",
+            requires_confirmation=True,
+            metadata={"classification": classification, "flow_stage": BRIEF_STAGE_READY},
+        )
+        session.set_pending_action(pending)
+        session.log("pending_created", pending.to_dict())
+        typer.echo("架构信息已补全，可输入 /yes 开始规划。")
+        return
+
+    next_field = result.missing_fields[0]
+    session.brief_pending_field = next_field
+    pending = PendingAction(
+        action_route=AgentTaskType.PLAN,
+        payload=str(session.pending_action.payload if session.pending_action else ""),
+        user_goal="classified_plan",
+        requires_confirmation=False,
+        metadata={"classification": classification, "flow_stage": BRIEF_STAGE_COLLECTING},
+    )
+    session.set_pending_action(pending)
+    session.log("pending_created", pending.to_dict())
+    if result.next_question:
+        typer.echo("先补全架构信息，再进入规划流程。")
+        typer.echo(result.next_question)
+
+
+def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
+    if session.pending_action is None:
+        return False
+    stage = _pending_stage(session)
+    if stage != BRIEF_STAGE_COLLECTING:
+        return False
+    classification = session.pending_action.metadata.get("classification")
+    if not isinstance(classification, dict):
+        return False
+    if not session.brief_pending_field:
+        return False
+
+    collector = ArchitectureBriefCollector()
+    result = collector.collect(
+        board_class=str(classification.get("board_class", "other")),
+        board_family=str(classification.get("board_family", "generic")),
+        user_text=payload,
+        brief=session.architecture_brief,
+        pending_field=session.brief_pending_field,
+    )
+    session.architecture_brief = result.updated_brief
+    session.log(
+        "brief_answered",
+        {
+            "field": result.answered_field,
+            "value": payload.strip(),
+            "missing_fields": result.missing_fields,
+        },
+    )
+
+    if result.is_complete:
+        session.brief_pending_field = None
+        session.brief_completed = True
+        session.pending_action.metadata["flow_stage"] = BRIEF_STAGE_READY
+        session.pending_action.requires_confirmation = True
+        session.log(
+            "brief_completed",
+            {"architecture_brief": session.architecture_brief, "missing_fields": result.missing_fields},
+        )
+        typer.echo("架构信息已补全，可输入 /yes 开始规划。")
+        return True
+
+    next_field = result.missing_fields[0]
+    session.brief_pending_field = next_field
+    session.brief_completed = False
+    if result.next_question:
+        typer.echo(result.next_question)
+    return True
+
+
 def _handle_classification_route(session: ChatSession, payload: str) -> bool:
     classifier = RequirementClassifier()
     result = classifier.classify(payload)
@@ -96,7 +204,7 @@ def _handle_classification_route(session: ChatSession, payload: str) -> bool:
     _log_decision(
         session,
         action_route=AgentTaskType.PLAN,
-        user_goal="classified_plan",
+        user_goal="classified_brief",
         requires_confirmation=True,
         confirmed=False,
         source="classifier",
@@ -104,16 +212,16 @@ def _handle_classification_route(session: ChatSession, payload: str) -> bool:
     pending = PendingAction(
         action_route=AgentTaskType.PLAN,
         payload=payload,
-        user_goal="classified_plan",
+        user_goal="classified_brief",
         requires_confirmation=True,
-        metadata={"classification": result.to_dict()},
+        metadata={"classification": result.to_dict(), "flow_stage": BRIEF_STAGE_CLASSIFIED},
     )
     session.set_pending_action(pending)
     session.log("pending_created", pending.to_dict())
     class_label = _board_class_label(result.board_class)
     family_label = result.board_family.upper() if result.board_family != "generic" else "通用"
     typer.echo(f"已识别需求：{class_label}（{family_label}），置信度 {result.confidence:.2f}。")
-    typer.echo("是否按这个方向开始规划？输入 /yes 继续，输入 /no 取消。")
+    typer.echo("是否进入架构信息补全？输入 /yes 继续，输入 /no 取消。")
     return True
 
 
@@ -131,6 +239,7 @@ def _run_task(
     retries: int,
     step_budget: int,
     classification: dict[str, str | float | bool] | None = None,
+    architecture_brief: dict[str, str] | None = None,
 ) -> bool:
     session.set_mode(_mode_for_task(task_type), source=f"task:{task_type.value}")
     options = {
@@ -143,6 +252,8 @@ def _run_task(
         input_payload = {"requirement": payload}
         if classification:
             input_payload["classification"] = classification
+        if architecture_brief:
+            input_payload["architecture_brief"] = architecture_brief
         options.update(
             {
                 "project_name": project_name,
@@ -239,6 +350,9 @@ def command(
             if session.pending_action is None:
                 typer.echo("No pending action to cancel.")
             else:
+                stage = _pending_stage(session)
+                if stage in {BRIEF_STAGE_COLLECTING, BRIEF_STAGE_READY, BRIEF_STAGE_CLASSIFIED}:
+                    session.clear_brief_state(keep_answers=True)
                 typer.echo(f"Cancelled pending `{session.pending_action.action_route.value}`.")
                 session.log("pending_cancelled", session.pending_action.to_dict())
                 session.clear_pending_action()
@@ -248,6 +362,49 @@ def command(
                 typer.echo("No pending action. Enter a request first.")
                 continue
             pending = session.pending_action
+            stage = _pending_stage(session)
+            if stage == BRIEF_STAGE_CLASSIFIED:
+                session.log(
+                    "pending_confirmed",
+                    {
+                        "decision": pending.user_goal,
+                        "requires_confirmation": pending.requires_confirmation,
+                        "confirmed": True,
+                        "action_route": pending.action_route.value,
+                        "metadata": pending.metadata,
+                        "reply_style": "summary_then_details",
+                    },
+                )
+                classification_payload = pending.metadata.get("classification")
+                if not isinstance(classification_payload, dict):
+                    typer.echo("分类信息异常，请重新描述需求。", err=True)
+                    session.clear_pending_action()
+                    continue
+                _start_brief_collection(session, classification_payload)
+                continue
+            if stage == BRIEF_STAGE_COLLECTING:
+                missing_labels = _brief_missing_labels(session)
+                typer.echo(f"还不能开始规划，仍缺少：{missing_labels}。")
+                if session.brief_pending_field:
+                    collector = ArchitectureBriefCollector()
+                    missing = collector.missing_fields(session.architecture_brief)
+                    if missing:
+                        next_field = missing[0]
+                        session.brief_pending_field = next_field
+                        idx = len(session.brief_required_fields) - len(missing) + 1
+                        typer.echo(
+                            collector.question_for(
+                                field=next_field,
+                                index=idx,
+                                total=len(session.brief_required_fields),
+                            )
+                        )
+                continue
+            if stage == BRIEF_STAGE_READY and not session.brief_completed:
+                missing_labels = _brief_missing_labels(session)
+                typer.echo(f"还不能开始规划，仍缺少：{missing_labels}。")
+                continue
+
             session.clear_pending_action()
             session.log(
                 "pending_confirmed",
@@ -275,7 +432,10 @@ def command(
                 retries=retries,
                 step_budget=step_budget,
                 classification=pending.metadata.get("classification"),
+                architecture_brief=session.architecture_brief if pending.action_route == AgentTaskType.PLAN else None,
             )
+            if pending.action_route == AgentTaskType.PLAN:
+                session.clear_brief_state(keep_answers=True)
             continue
 
         if action in {"plan", "build", "check", "edit"}:
@@ -329,6 +489,15 @@ def command(
             continue
 
         if action == "text":
+            if _handle_brief_answer(session, payload):
+                continue
+            stage = _pending_stage(session)
+            if stage == BRIEF_STAGE_CLASSIFIED:
+                typer.echo("请输入 /yes 进入架构信息补全，或输入 /no 取消本次需求。")
+                continue
+            if stage == BRIEF_STAGE_READY:
+                typer.echo("架构信息已补全，请输入 /yes 开始规划，或输入 /no 取消。")
+                continue
             if session.pending_action is None and _handle_classification_route(session, payload):
                 continue
             _log_decision(
