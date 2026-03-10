@@ -1,4 +1,4 @@
-from pathlib import Path
+﻿from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -8,7 +8,10 @@ runner = CliRunner()
 
 
 def _write_mock_config(path: Path) -> None:
-    path.write_text("use_mock_planner = true\nprovider = \"openai\"\nmodel = \"gpt-4o-mini\"\n", encoding="utf-8")
+    path.write_text(
+        "use_mock_planner = true\nprovider = \"deepseek\"\nmodel = \"deepseek-chat\"\napi_key = \"k\"\n",
+        encoding="utf-8",
+    )
 
 
 def test_chat_sequence_plan_build_check_exit() -> None:
@@ -16,7 +19,7 @@ def test_chat_sequence_plan_build_check_exit() -> None:
         config = Path("openpcb.config.toml")
         _write_mock_config(config)
         user_input = (
-            "design stm32 with usb and led\n"
+            "/plan design stm32 with usb and led\n"
             "/build\n"
             "/yes\n"
             "/check\n"
@@ -51,14 +54,40 @@ def test_chat_build_before_plan_shows_hint() -> None:
         assert "Cannot run `build` yet. Please run plan first." in result.stderr
 
 
-def test_chat_text_edit_requires_confirmation() -> None:
+def test_chat_text_uses_llm_reply_and_clear(monkeypatch) -> None:
+    class _FakeResponse:
+        def __init__(self, payload: dict) -> None:
+            self._payload = payload
+
+        def read(self) -> bytes:
+            import json
+
+            return json.dumps(self._payload).encode("utf-8")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    def _fake_urlopen(req, timeout=30):  # noqa: ANN001
+        _ = req
+        _ = timeout
+        return _FakeResponse({"choices": [{"message": {"content": "hello from llm"}}], "usage": {"total_tokens": 3}})
+
+    monkeypatch.setattr("openpcb.agent.llm.openai_client.request.urlopen", _fake_urlopen)
+
     with runner.isolated_filesystem():
         config = Path("openpcb.config.toml")
-        _write_mock_config(config)
+        config.write_text(
+            "provider = \"deepseek\"\nmodel = \"deepseek-chat\"\napi_key = \"k\"\n",
+            encoding="utf-8",
+        )
         user_input = (
-            "design stm32 with usb and led\n"
-            "add one more led\n"
-            "/yes\n"
+            "你好\n"
+            "/status\n"
+            "/clear\n"
+            "/status\n"
             "/exit\n"
         )
         result = runner.invoke(
@@ -67,6 +96,8 @@ def test_chat_text_edit_requires_confirmation() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "Decision: edit" in result.stdout
-        assert "Confirmation required before `edit` writes files." in result.stdout
-        assert "Conclusion: `edit` completed." in result.stdout
+        assert "hello from llm" in result.stdout
+        assert "Decision: plan" not in result.stdout
+        assert "Cleared chat history and pending action." in result.stdout
+        assert "- chat_turns: 2" in result.stdout
+        assert "- chat_turns: 0" in result.stdout

@@ -12,12 +12,14 @@ from openpcb.agent.session import ChatSession
 def format_help_lines() -> list[str]:
     return [
         "Available commands:",
-        "- <text>: auto route to plan/build/check/edit",
+        "- <text>: LLM chat reply",
+        "- /plan <requirement>",
         "- /build",
         "- /check",
         "- /edit <instruction>",
         "- /yes",
         "- /no",
+        "- /clear",
         "- /status",
         "- /help",
         "- /exit",
@@ -32,6 +34,7 @@ def format_status_lines(session: ChatSession) -> list[str]:
         f"- project_dir: {session.project_dir}",
         f"- project_json: {session.project_json_path or 'not planned'}",
         f"- pending_action: {pending}",
+        f"- chat_turns: {len(session.chat_messages)}",
         f"- last_artifacts: {artifact_keys if artifact_keys else 'none'}",
     ]
 

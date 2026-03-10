@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import typer
 
 from openpcb import __version__
@@ -9,7 +11,8 @@ from openpcb.cli.commands import build, chat, check, edit, generate, init, plan
 
 app = typer.Typer(
     add_completion=False,
-    no_args_is_help=True,
+    no_args_is_help=False,
+    invoke_without_command=True,
     pretty_exceptions_enable=False,
 )
 
@@ -22,6 +25,17 @@ def main_callback(
     """OpenPCB command line interface."""
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
+    if ctx.invoked_subcommand is None and not ctx.resilient_parsing:
+        chat.command(
+            project_dir=Path("."),
+            project_name="openpcb_project",
+            config=Path("openpcb.config.toml"),
+            provider=None,
+            model=None,
+            use_mock_planner=None,
+            retries=1,
+            step_budget=8,
+        )
 
 
 @app.command("version")

@@ -40,6 +40,7 @@ class ChatSession:
     last_decision: dict[str, Any] | None = None
     last_result_summary: dict[str, Any] | None = None
     history: list[dict[str, Any]] = field(default_factory=list)
+    chat_messages: list[dict[str, str]] = field(default_factory=list)
     log_file: Path | None = None
 
     @classmethod
@@ -70,6 +71,10 @@ class ChatSession:
 
     def clear_pending_action(self) -> None:
         self.pending_action = None
+
+    def clear_chat(self) -> None:
+        self.chat_messages = []
+        self.clear_pending_action()
 
 
 def parse_repl_input(user_input: str) -> tuple[str, str]:

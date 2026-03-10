@@ -5,6 +5,7 @@ from openpcb.agent.session import ChatSession, parse_repl_input
 
 def test_parse_repl_input() -> None:
     assert parse_repl_input("design stm32")[0] == "text"
+    assert parse_repl_input("/plan design stm32") == ("plan", "design stm32")
     assert parse_repl_input("/build") == ("build", "")
     assert parse_repl_input("/edit add led") == ("edit", "add led")
     assert parse_repl_input("   ") == ("empty", "")
@@ -17,5 +18,8 @@ def test_session_state_and_log_file(tmp_path: Path) -> None:
     session.last_plan = {"name": "demo"}
     session.last_artifacts = {"bom": str(project_dir / "output" / "bom.json")}
     session.log("custom", {"ok": True})
+    session.chat_messages = [{"role": "user", "content": "hi"}]
+    session.clear_chat()
     assert session.log_file is not None
     assert session.log_file.exists()
+    assert session.chat_messages == []

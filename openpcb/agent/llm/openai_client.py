@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from time import perf_counter
+from urllib.parse import urlparse, urlunparse
 from urllib import error, request
 
 from openpcb.agent.llm.base import LLMClient
@@ -14,9 +15,11 @@ class OpenAIClient(LLMClient):
     """Minimal OpenAI-compatible client via stdlib urllib."""
 
     def complete(self, llm_request: LLMRequest) -> LLMResponse:
+        endpoint = _normalize_chat_completions_url(llm_request.base_url)
         payload = {
             "model": llm_request.model,
-            "messages": [
+            "messages": llm_request.messages
+            or [
                 {"role": "system", "content": llm_request.system_prompt},
                 {"role": "user", "content": llm_request.user_prompt},
             ],
@@ -24,7 +27,7 @@ class OpenAIClient(LLMClient):
         }
         body = json.dumps(payload).encode("utf-8")
         req = request.Request(
-            llm_request.base_url,
+            endpoint,
             data=body,
             headers={
                 "Content-Type": "application/json",
@@ -52,9 +55,26 @@ class OpenAIClient(LLMClient):
                 )
             except error.HTTPError as exc:
                 code = getattr(exc, "code", None)
-                last_error = LLMError(f"OpenAI HTTP error: {code}", code=code)
+                last_error = LLMError(
+                    f"{llm_request.provider} HTTP error: {code} endpoint={endpoint}",
+                    code=code,
+                )
             except (error.URLError, KeyError, IndexError, json.JSONDecodeError) as exc:
-                last_error = LLMError(f"OpenAI request failed: {exc}")
+                last_error = LLMError(f"{llm_request.provider} request failed: {exc} endpoint={endpoint}")
         if last_error is None:
-            last_error = LLMError("OpenAI request failed with unknown error.")
+            last_error = LLMError(f"{llm_request.provider} request failed with unknown error. endpoint={endpoint}")
         raise last_error
+
+
+def _normalize_chat_completions_url(base_url: str) -> str:
+    parsed = urlparse(base_url)
+    if not parsed.scheme or not parsed.netloc:
+        return base_url
+    normalized_path = parsed.path.rstrip("/")
+    if normalized_path.endswith("/chat/completions"):
+        return base_url.rstrip("/")
+    if normalized_path in {"", "/"}:
+        normalized_path = "/chat/completions"
+    else:
+        normalized_path = f"{normalized_path}/chat/completions"
+    return urlunparse((parsed.scheme, parsed.netloc, normalized_path, parsed.params, parsed.query, parsed.fragment))

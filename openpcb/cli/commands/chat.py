@@ -6,7 +6,8 @@ from pathlib import Path
 
 import typer
 
-from openpcb.agent.conversation import ConversationDecision, decide_action
+from openpcb.agent.chat_agent import ChatAgent
+from openpcb.agent.llm.types import LLMError
 from openpcb.agent.models import AgentTaskType
 from openpcb.agent.runtime import AgentRuntime
 from openpcb.agent.session import ChatSession, PendingAction, parse_repl_input
@@ -19,7 +20,8 @@ from openpcb.cli.presenter import (
     format_run_success,
     format_status_lines,
 )
-from openpcb.utils.errors import OpenPCBError
+from openpcb.config.loader import load_agent_settings
+from openpcb.utils.errors import InputError, OpenPCBError
 
 
 def _print_lines(lines: list[str], err: bool = False) -> None:
@@ -38,16 +40,24 @@ def _ensure_has_project(session: ChatSession, action_name: str) -> bool:
     return True
 
 
-def _log_decision(session: ChatSession, decision: ConversationDecision, source: str) -> None:
+def _log_decision(
+    session: ChatSession,
+    *,
+    action_route: AgentTaskType | None,
+    user_goal: str,
+    requires_confirmation: bool,
+    confirmed: bool,
+    source: str,
+) -> None:
     payload = {
         "source": source,
-        "decision": decision.user_goal,
-        "requires_confirmation": decision.requires_confirmation,
-        "confirmed": decision.confirmed,
-        "action_route": decision.action_route.value if decision.action_route else None,
-        "reply_style": decision.reply_style,
+        "decision": user_goal,
+        "requires_confirmation": requires_confirmation,
+        "confirmed": confirmed,
+        "action_route": action_route.value if action_route else None,
+        "reply_style": "summary_then_details",
     }
-    session.last_user_goal = decision.user_goal
+    session.last_user_goal = user_goal
     session.last_decision = payload
     session.log("decision", payload)
 
@@ -136,8 +146,9 @@ def command(
     retries: int = typer.Option(1, "--retries", help="Retry count for failed runtime steps."),
     step_budget: int = typer.Option(8, "--step-budget", help="Maximum runtime steps."),
 ) -> None:
-    """Run interactive conversation-style REPL for plan/build/check/edit."""
+    """Run conversation-first REPL with LLM chat and explicit slash task commands."""
     runtime = AgentRuntime()
+    chat_agent = ChatAgent()
     session = ChatSession.create(project_dir=project_dir.resolve())
     typer.echo(f"OpenPCB interactive session started: {session.session_id}")
     typer.echo(f"Session log: {session.log_file}")
@@ -159,6 +170,11 @@ def command(
             break
         if action == "status":
             _print_lines(format_status_lines(session))
+            continue
+        if action == "clear":
+            session.clear_chat()
+            session.log("chat_cleared", {})
+            typer.echo("Cleared chat history and pending action.")
             continue
         if action == "no":
             if session.pending_action is None:
@@ -201,30 +217,34 @@ def command(
             )
             continue
 
-        if action in {"build", "check", "edit"}:
-            if action != "check" and action != "plan" and not _ensure_has_project(session, action):
+        if action in {"plan", "build", "check", "edit"}:
+            if action in {"build", "check", "edit"} and not _ensure_has_project(session, action):
+                continue
+            if action == "plan" and not payload:
+                typer.echo("Usage: /plan <requirement>", err=True)
                 continue
             if action == "edit" and not payload:
                 typer.echo("Usage: /edit <instruction>", err=True)
                 continue
 
             route = AgentTaskType(action)
-            decision = ConversationDecision(
+            user_goal = f"force_{action}"
+            requires_confirmation = route in {AgentTaskType.BUILD, AgentTaskType.EDIT}
+            _log_decision(
+                session,
                 action_route=route,
-                requires_confirmation=route in {AgentTaskType.BUILD, AgentTaskType.EDIT},
+                user_goal=user_goal,
+                requires_confirmation=requires_confirmation,
                 confirmed=False,
-                reply_style="summary_then_details",
-                user_goal=f"force_{action}",
-                payload=payload,
+                source="slash",
             )
-            _log_decision(session, decision, source="slash")
-            typer.echo(format_decision_summary(decision.action_route, decision.user_goal))
+            typer.echo(format_decision_summary(route, user_goal))
 
-            if decision.requires_confirmation:
+            if requires_confirmation:
                 pending = PendingAction(
                     action_route=route,
                     payload=payload,
-                    user_goal=decision.user_goal,
+                    user_goal=user_goal,
                     requires_confirmation=True,
                 )
                 session.set_pending_action(pending)
@@ -248,52 +268,45 @@ def command(
             continue
 
         if action == "text":
-            decision = decide_action(payload, has_project=session.project_json_path is not None)
-            _log_decision(session, decision, source="text")
-
-            if decision.action_route is None:
-                typer.echo(decision.clarification or "Please clarify your request.")
-                continue
-
-            typer.echo(format_decision_summary(decision.action_route, decision.user_goal))
-
-            if decision.action_route != AgentTaskType.PLAN and not _ensure_has_project(session, decision.action_route.value):
-                continue
-
-            if decision.requires_confirmation:
-                pending = PendingAction(
-                    action_route=decision.action_route,
-                    payload=decision.payload,
-                    user_goal=decision.user_goal,
-                    requires_confirmation=True,
-                )
-                session.set_pending_action(pending)
-                session.log(
-                    "pending_created",
-                    {
-                        **pending.to_dict(),
-                        "decision": decision.user_goal,
-                        "requires_confirmation": True,
-                        "confirmed": False,
-                        "reply_style": decision.reply_style,
+            _log_decision(
+                session,
+                action_route=None,
+                user_goal="chat",
+                requires_confirmation=False,
+                confirmed=True,
+                source="text",
+            )
+            try:
+                settings = load_agent_settings(
+                    config_path=config,
+                    overrides={
+                        "provider": provider,
+                        "model": model,
+                        "use_mock_planner": False,
                     },
                 )
-                typer.echo(format_confirmation_line(decision.action_route))
+            except InputError as exc:
+                msg = f"Chat is unavailable: {exc}"
+                typer.echo(msg, err=True)
+                session.log("chat_error", {"error": msg})
                 continue
 
-            _run_task(
-                runtime,
-                session,
-                decision.action_route,
-                decision.payload,
-                project_name=project_name,
-                config=config,
-                provider=provider,
-                model=model,
-                use_mock_planner=use_mock_planner,
-                retries=retries,
-                step_budget=step_budget,
-            )
+            try:
+                reply = chat_agent.reply(
+                    settings=settings,
+                    messages=session.chat_messages,
+                    user_text=payload,
+                )
+            except LLMError as exc:
+                msg = f"Chat request failed: {exc}"
+                typer.echo(msg, err=True)
+                session.log("chat_error", {"error": msg})
+                continue
+
+            typer.echo(reply.content)
+            session.chat_messages.append({"role": "user", "content": payload})
+            session.chat_messages.append({"role": "assistant", "content": reply.content})
+            session.log("chat_reply", {"llm_meta": reply.llm_meta})
             continue
 
         typer.echo(f"Unknown command: /{action}. Use /help.", err=True)

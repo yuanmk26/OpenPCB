@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -13,6 +14,7 @@ class LLMRequest:
     base_url: str
     system_prompt: str
     user_prompt: str
+    messages: list[dict[str, Any]] | None = None
     timeout: float = 30.0
     max_retries: int = 1
 

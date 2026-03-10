@@ -31,12 +31,16 @@ def load_agent_settings(
     payload.update({k: v for k, v in (overrides or {}).items() if v is not None})
 
     if "api_key" not in payload:
-        payload["api_key"] = os.getenv("OPENPCB_API_KEY")
+        provider = str(payload.get("provider", "")).strip().lower()
+        if provider in {"", "deepseek"}:
+            payload["api_key"] = os.getenv("DEEPSEEK_API_KEY") or os.getenv("OPENPCB_API_KEY")
+        else:
+            payload["api_key"] = os.getenv("OPENPCB_API_KEY")
 
     settings = AgentSettings.from_dict(payload)
     if not settings.use_mock_planner and not settings.api_key:
         raise InputError(
-            "Missing API key. Set `api_key` in config or OPENPCB_API_KEY, "
+            "Missing API key. Set `api_key` in config or DEEPSEEK_API_KEY/OPENPCB_API_KEY, "
             "or enable `use_mock_planner = true`."
         )
     return settings

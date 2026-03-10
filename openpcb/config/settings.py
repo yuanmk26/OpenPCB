@@ -8,7 +8,7 @@ from pydantic import BaseModel, model_validator
 
 
 class AgentSettings(BaseModel):
-    provider: Literal["openai", "deepseek"] = "openai"
+    provider: Literal["openai", "deepseek"] = "deepseek"
     model: str | None = None
     api_key: str | None = None
     base_url: str | None = None
@@ -32,5 +32,5 @@ class AgentSettings(BaseModel):
             if not self.model:
                 self.model = "deepseek-chat"
             if not self.base_url:
-                self.base_url = "https://api.deepseek.com/chat/completions"
+                self.base_url = "https://api.deepseek.com"
         return self

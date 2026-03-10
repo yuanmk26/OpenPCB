@@ -4,7 +4,7 @@ from urllib import error
 
 import pytest
 
-from openpcb.agent.llm.openai_client import OpenAIClient
+from openpcb.agent.llm.openai_client import OpenAIClient, _normalize_chat_completions_url
 from openpcb.agent.llm.types import LLMError, LLMRequest
 
 
@@ -23,7 +23,10 @@ class _FakeResponse:
 
 
 def test_openai_client_success(monkeypatch) -> None:
+    captured_url: dict[str, str] = {}
+
     def _fake_urlopen(req, timeout=30):  # noqa: ANN001
+        captured_url["url"] = req.full_url
         _ = req
         _ = timeout
         return _FakeResponse(
@@ -40,13 +43,14 @@ def test_openai_client_success(monkeypatch) -> None:
             provider="openai",
             model="gpt-4o-mini",
             api_key="k",
-            base_url="https://example.com",
+            base_url="https://example.com/",
             system_prompt="s",
             user_prompt="u",
         )
     )
     assert response.token_usage == 123
     assert "modules" in response.content
+    assert captured_url["url"] == "https://example.com/chat/completions"
 
 
 def test_openai_client_http_error(monkeypatch) -> None:
@@ -68,3 +72,13 @@ def test_openai_client_http_error(monkeypatch) -> None:
                 user_prompt="u",
             )
         )
+
+
+def test_normalize_chat_url_keeps_completions_path() -> None:
+    assert _normalize_chat_completions_url("https://api.deepseek.com/chat/completions") == (
+        "https://api.deepseek.com/chat/completions"
+    )
+
+
+def test_normalize_chat_url_appends_completions_path() -> None:
+    assert _normalize_chat_completions_url("https://api.deepseek.com") == "https://api.deepseek.com/chat/completions"
