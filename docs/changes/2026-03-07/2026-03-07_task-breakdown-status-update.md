@@ -25,7 +25,7 @@
 - 受影响文件：
   - `openpcb_task_breakdown.md`
 - 新增文档：
-  - `docs/changes/2026-03-07_task-breakdown-status-update.md`
+  - `docs/changes/2026-03-07/2026-03-07_task-breakdown-status-update.md`
 - 本次仅为文档状态化更新，不涉及代码逻辑修改。
 
 ## 验证结果
@@ -41,4 +41,3 @@
 
 1. 按当前状态化任务表进入 M3（优先实现 `plan` 的 mock 逻辑与落盘）。
 2. 后续每次任务完成后继续在 `docs/changes/` 追加一份同结构解释文档，保持可追溯。
-

@@ -15,12 +15,14 @@ docs/
     system-architecture.md
   changes/
     _TEMPLATE.md
-    YYYY-MM-DD_<kebab-topic>.md
+    YYYY-MM-DD/
+      YYYY-MM-DD_<kebab-topic>.md
 ```
 
 ## changes 目录规则
 
-每次代码变更任务结束后，必须新增 1 份变更说明文档到 `docs/changes/`。
+每次代码变更任务结束后，必须新增 1 份变更说明文档到 `docs/changes/<YYYY-MM-DD>/`。
+- 日期目录命名：`YYYY-MM-DD`
 - 文件命名：`YYYY-MM-DD_<kebab-topic>.md`
 - 默认语言：中文
 - 每次请求只生成 1 份总文档（不按模块拆分）
