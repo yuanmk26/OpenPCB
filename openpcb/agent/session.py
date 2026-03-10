@@ -20,6 +20,7 @@ class PendingAction:
     payload: str = ""
     user_goal: str = ""
     requires_confirmation: bool = True
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -27,6 +28,7 @@ class PendingAction:
             "payload": self.payload,
             "user_goal": self.user_goal,
             "requires_confirmation": self.requires_confirmation,
+            "metadata": self.metadata,
         }
 
 

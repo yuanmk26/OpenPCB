@@ -1,4 +1,5 @@
-﻿from pathlib import Path
+﻿import json
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -101,3 +102,66 @@ def test_chat_text_uses_llm_reply_and_clear(monkeypatch) -> None:
         assert "Cleared chat history and pending action." in result.stdout
         assert "- chat_turns: 2" in result.stdout
         assert "- chat_turns: 0" in result.stdout
+
+
+def test_chat_requirement_text_requires_confirmation_before_plan() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "\u6211\u60f3\u8bbe\u8ba1\u4e00\u4e2aSTM32\u6838\u5fc3\u677f\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "Detected requirement category: mcu_core / stm32" in result.stdout
+        assert "Confirm to start planning with this requirement?" in result.stdout
+        assert not (Path("demo") / "project.json").exists()
+
+
+def test_chat_requirement_text_yes_runs_plan() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "\u6211\u60f3\u8bbe\u8ba1\u4e00\u4e2aSTM32\u6838\u5fc3\u677f\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "Detected requirement category: mcu_core / stm32" in result.stdout
+        assert "Conclusion: `plan` completed." in result.stdout
+        assert (Path("demo") / "project.json").exists()
+        project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
+        classification = project.get("metadata", {}).get("classification", {})
+        assert classification.get("board_class") == "mcu_core"
+        assert classification.get("board_family") == "stm32"
+
+
+def test_chat_requirement_text_no_cancels_pending_plan() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "\u6211\u60f3\u8bbe\u8ba1\u4e00\u4e2aSTM32\u6838\u5fc3\u677f\n"
+            "/no\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "Detected requirement category: mcu_core / stm32" in result.stdout
+        assert "Cancelled pending `plan`." in result.stdout
+        assert not (Path("demo") / "project.json").exists()

@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 
 from openpcb.agent.chat_agent import ChatAgent
+from openpcb.agent.classifier import RequirementClassifier
 from openpcb.agent.llm.types import LLMError
 from openpcb.agent.models import AgentTaskType
 from openpcb.agent.runtime import AgentRuntime
@@ -22,6 +23,8 @@ from openpcb.cli.presenter import (
 )
 from openpcb.config.loader import load_agent_settings
 from openpcb.utils.errors import InputError, OpenPCBError
+
+CLASSIFICATION_CONFIRM_THRESHOLD = 0.6
 
 
 def _print_lines(lines: list[str], err: bool = False) -> None:
@@ -68,6 +71,52 @@ def _mode_for_task(task_type: AgentTaskType) -> str:
     return "schematic_design"
 
 
+def _handle_classification_route(session: ChatSession, payload: str) -> bool:
+    classifier = RequirementClassifier()
+    result = classifier.classify(payload)
+    if not result.should_route:
+        return False
+
+    session.log("classification_detected", result.to_dict())
+    if result.confidence < CLASSIFICATION_CONFIRM_THRESHOLD:
+        typer.echo(
+            (
+                "Detected a possible board-design request, but confidence is low "
+                f"({result.confidence:.2f})."
+            )
+        )
+        typer.echo(f"Reason: {result.reason}")
+        typer.echo("Please clarify the board type, key chip, and major interfaces.")
+        return True
+
+    _log_decision(
+        session,
+        action_route=AgentTaskType.PLAN,
+        user_goal="classified_plan",
+        requires_confirmation=True,
+        confirmed=False,
+        source="classifier",
+    )
+    pending = PendingAction(
+        action_route=AgentTaskType.PLAN,
+        payload=payload,
+        user_goal="classified_plan",
+        requires_confirmation=True,
+        metadata={"classification": result.to_dict()},
+    )
+    session.set_pending_action(pending)
+    session.log("pending_created", pending.to_dict())
+    typer.echo(
+        (
+            "Detected requirement category: "
+            f"{result.board_class} / {result.board_family} (confidence {result.confidence:.2f})."
+        )
+    )
+    typer.echo(f"Reason: {result.reason}")
+    typer.echo("Confirm to start planning with this requirement? Type /yes to continue or /no to cancel.")
+    return True
+
+
 def _run_task(
     runtime: AgentRuntime,
     session: ChatSession,
@@ -81,6 +130,7 @@ def _run_task(
     use_mock_planner: bool | None,
     retries: int,
     step_budget: int,
+    classification: dict[str, str | float | bool] | None = None,
 ) -> bool:
     session.set_mode(_mode_for_task(task_type), source=f"task:{task_type.value}")
     options = {
@@ -91,6 +141,8 @@ def _run_task(
 
     if task_type == AgentTaskType.PLAN:
         input_payload = {"requirement": payload}
+        if classification:
+            input_payload["classification"] = classification
         options.update(
             {
                 "project_name": project_name,
@@ -204,6 +256,7 @@ def command(
                     "requires_confirmation": pending.requires_confirmation,
                     "confirmed": True,
                     "action_route": pending.action_route.value,
+                    "metadata": pending.metadata,
                     "reply_style": "summary_then_details",
                 },
             )
@@ -221,6 +274,7 @@ def command(
                 use_mock_planner=use_mock_planner,
                 retries=retries,
                 step_budget=step_budget,
+                classification=pending.metadata.get("classification"),
             )
             continue
 
@@ -275,6 +329,8 @@ def command(
             continue
 
         if action == "text":
+            if session.pending_action is None and _handle_classification_route(session, payload):
+                continue
             _log_decision(
                 session,
                 action_route=None,
