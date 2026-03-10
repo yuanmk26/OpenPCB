@@ -16,7 +16,7 @@ docs/
     system-architecture.md
   project/
     README.md
-    docs/project/TODO_LIST.md
+    docs/project/TODO.md
     CI_CD.md
   changes/
     _TEMPLATE.md
@@ -52,7 +52,8 @@ docs/
 ## project 目录规则
 
 `project/` 用于承载项目管理与工程流程规范。
-- `docs/project/TODO_LIST.md`：里程碑、状态、优先级与验收标准。
+- `docs/project/TODO.md`：里程碑、状态、优先级与验收标准。
 - `CI_CD.md`：持续集成与持续交付规则、触发策略、质量门禁与失败处理。
 - 项目管理规则变化时，同步更新本目录与当日 `docs/changes/<YYYY-MM-DD>/` 记录。
+
 
