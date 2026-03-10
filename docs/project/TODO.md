@@ -37,7 +37,7 @@
 ## A. Conversation 与编排层
 
 ### A1 Conversation-first 默认入口（`openpcb` 直进 shell）
-- 状态：`未开始`
+- 状态：`已完成`
 - 目标：将默认入口从 help 转为对话 shell，`openpcb chat` 作为兼容别名。
 - 验收标准：`openpcb` 无参数进入会话；可通过 `/help` 查看命令与模式。
 - 测试点：新增 CLI 入口行为测试。
@@ -156,7 +156,7 @@
 2. P0：C2/C3（解耦 builder 与 exporter，建立可演进流水线边界）。
 3. P1：C4/D2（补强 check/edit 的工程可用性）。
 4. P1：A2/A3（降低会话误触发任务风险）。
-5. P2：A1/E2/E3（默认入口切换、示例固化、CD 自动化）。
+5. P2：E2/E3（示例固化、CD 自动化）。
 
 ---
 

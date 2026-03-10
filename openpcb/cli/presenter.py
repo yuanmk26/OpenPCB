@@ -23,6 +23,10 @@ def format_help_lines() -> list[str]:
         "- /status",
         "- /help",
         "- /exit",
+        "",
+        "Modes (v1):",
+        "- system_architecture",
+        "- schematic_design",
     ]
 
 
