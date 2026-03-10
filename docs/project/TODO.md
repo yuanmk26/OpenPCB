@@ -59,7 +59,7 @@
 ## B. Mode-Action 核心模型
 
 ### B1 Session 增加 `current_mode`
-- 状态：`未开始`
+- 状态：`已完成`
 - 目标：在会话状态里持久化当前工作视角。
 - 验收标准：会话日志可追踪 mode 变化；重入会话可恢复 mode。
 - 测试点：`tests/agent/test_session.py` 扩展。
@@ -152,7 +152,7 @@
 
 ## 4. 近阶段优先级（P0 -> P2）
 
-1. P0：B1/B2/B3（先打通 mode-action 主轴，避免继续加重 task_type 技术债）。
+1. P0：B2/B3（先打通 mode-action 主轴，避免继续加重 task_type 技术债）。
 2. P0：C2/C3（解耦 builder 与 exporter，建立可演进流水线边界）。
 3. P1：C4/D2（补强 check/edit 的工程可用性）。
 4. P1：A2/A3（降低会话误触发任务风险）。

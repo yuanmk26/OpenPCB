@@ -11,6 +11,8 @@ from uuid import uuid4
 
 from openpcb.agent.models import AgentTaskType
 
+DEFAULT_MODE = "system_architecture"
+
 
 @dataclass
 class PendingAction:
@@ -32,6 +34,7 @@ class PendingAction:
 class ChatSession:
     session_id: str
     project_dir: Path
+    current_mode: str = DEFAULT_MODE
     project_json_path: Path | None = None
     last_plan: dict[str, Any] | None = None
     last_artifacts: dict[str, Any] | None = None
@@ -47,10 +50,25 @@ class ChatSession:
     def create(cls, project_dir: Path) -> "ChatSession":
         logs_dir = project_dir / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
+        restored_mode, restored_from = _restore_mode_from_logs(logs_dir)
         sid = datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + uuid4().hex[:8]
-        session = cls(session_id=sid, project_dir=project_dir)
+        session = cls(session_id=sid, project_dir=project_dir, current_mode=restored_mode)
         session.log_file = logs_dir / f"session-{sid}.jsonl"
-        session.log("session_started", {"project_dir": str(project_dir)})
+        session.log(
+            "session_started",
+            {
+                "project_dir": str(project_dir),
+                "current_mode": session.current_mode,
+                "restored_from": str(restored_from) if restored_from else None,
+            },
+        )
+        if restored_from:
+            session.log(
+                "mode_restored",
+                {"current_mode": session.current_mode, "from_log": str(restored_from)},
+            )
+        else:
+            session.log("mode_initialized", {"current_mode": session.current_mode})
         return session
 
     def log(self, event: str, payload: dict[str, Any]) -> None:
@@ -75,6 +93,53 @@ class ChatSession:
     def clear_chat(self) -> None:
         self.chat_messages = []
         self.clear_pending_action()
+
+    def set_mode(self, mode: str, *, source: str = "system") -> None:
+        if mode == self.current_mode:
+            return
+        from_mode = self.current_mode
+        self.current_mode = mode
+        self.log(
+            "mode_changed",
+            {
+                "from_mode": from_mode,
+                "to_mode": mode,
+                "current_mode": mode,
+                "source": source,
+            },
+        )
+
+
+def _restore_mode_from_logs(logs_dir: Path) -> tuple[str, Path | None]:
+    session_logs = sorted(logs_dir.glob("session-*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
+    for log_path in session_logs:
+        mode = _read_last_mode_from_log(log_path)
+        if mode:
+            return mode, log_path
+    return DEFAULT_MODE, None
+
+
+def _read_last_mode_from_log(log_path: Path) -> str | None:
+    last_mode: str | None = None
+    try:
+        with log_path.open("r", encoding="utf-8") as fp:
+            for raw in fp:
+                text = raw.strip()
+                if not text:
+                    continue
+                try:
+                    item = json.loads(text)
+                except json.JSONDecodeError:
+                    continue
+                payload = item.get("payload", {})
+                if not isinstance(payload, dict):
+                    continue
+                mode = payload.get("current_mode") or payload.get("to_mode")
+                if isinstance(mode, str) and mode:
+                    last_mode = mode
+    except OSError:
+        return None
+    return last_mode
 
 
 def parse_repl_input(user_input: str) -> tuple[str, str]:

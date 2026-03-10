@@ -62,6 +62,12 @@ def _log_decision(
     session.log("decision", payload)
 
 
+def _mode_for_task(task_type: AgentTaskType) -> str:
+    if task_type == AgentTaskType.PLAN:
+        return "system_architecture"
+    return "schematic_design"
+
+
 def _run_task(
     runtime: AgentRuntime,
     session: ChatSession,
@@ -76,6 +82,7 @@ def _run_task(
     retries: int,
     step_budget: int,
 ) -> bool:
+    session.set_mode(_mode_for_task(task_type), source=f"task:{task_type.value}")
     options = {
         "retries": retries,
         "step_budget": step_budget,

@@ -23,3 +23,25 @@ def test_session_state_and_log_file(tmp_path: Path) -> None:
     assert session.log_file is not None
     assert session.log_file.exists()
     assert session.chat_messages == []
+
+
+def test_session_mode_change_is_logged(tmp_path: Path) -> None:
+    project_dir = tmp_path / "chat_project"
+    session = ChatSession.create(project_dir=project_dir)
+    session.set_mode("schematic_design", source="test")
+
+    assert session.current_mode == "schematic_design"
+    assert any(
+        item["event"] == "mode_changed" and item["payload"].get("to_mode") == "schematic_design"
+        for item in session.history
+    )
+
+
+def test_session_reentry_restores_current_mode(tmp_path: Path) -> None:
+    project_dir = tmp_path / "chat_project"
+    first = ChatSession.create(project_dir=project_dir)
+    first.set_mode("schematic_design", source="test")
+
+    second = ChatSession.create(project_dir=project_dir)
+    assert second.current_mode == "schematic_design"
+    assert any(item["event"] == "mode_restored" for item in second.history)

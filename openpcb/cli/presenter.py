@@ -36,6 +36,7 @@ def format_status_lines(session: ChatSession) -> list[str]:
     return [
         f"- session_id: {session.session_id}",
         f"- project_dir: {session.project_dir}",
+        f"- current_mode: {session.current_mode}",
         f"- project_json: {session.project_json_path or 'not planned'}",
         f"- pending_action: {pending}",
         f"- chat_turns: {len(session.chat_messages)}",
