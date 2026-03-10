@@ -32,10 +32,10 @@ def test_chat_sequence_plan_build_check_exit() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "Conclusion: `plan` completed." in result.stdout
-        assert "Confirmation required before `build` writes files." in result.stdout
-        assert "Conclusion: `build` completed." in result.stdout
-        assert "Conclusion: `check` completed." in result.stdout
+        assert "已完成：`plan`。" in result.stdout
+        assert "`build` 会写入项目文件。输入 /yes 继续，或输入 /no 取消。" in result.stdout
+        assert "已完成：`build`。" in result.stdout
+        assert "已完成：`check`。" in result.stdout
         assert "Session ended." in result.stdout
         assert (Path("demo") / "project.json").exists()
         assert (Path("demo") / "output" / "bom.json").exists()
@@ -118,8 +118,8 @@ def test_chat_requirement_text_requires_confirmation_before_plan() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "Detected requirement category: mcu_core / stm32" in result.stdout
-        assert "Confirm to start planning with this requirement?" in result.stdout
+        assert "已识别需求：单片机核心板（STM32）" in result.stdout
+        assert "是否按这个方向开始规划？输入 /yes 继续，输入 /no 取消。" in result.stdout
         assert not (Path("demo") / "project.json").exists()
 
 
@@ -138,8 +138,8 @@ def test_chat_requirement_text_yes_runs_plan() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "Detected requirement category: mcu_core / stm32" in result.stdout
-        assert "Conclusion: `plan` completed." in result.stdout
+        assert "已识别需求：单片机核心板（STM32）" in result.stdout
+        assert "已完成：`plan`。" in result.stdout
         assert (Path("demo") / "project.json").exists()
         project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
         classification = project.get("metadata", {}).get("classification", {})
@@ -162,6 +162,6 @@ def test_chat_requirement_text_no_cancels_pending_plan() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "Detected requirement category: mcu_core / stm32" in result.stdout
+        assert "已识别需求：单片机核心板（STM32）" in result.stdout
         assert "Cancelled pending `plan`." in result.stdout
         assert not (Path("demo") / "project.json").exists()

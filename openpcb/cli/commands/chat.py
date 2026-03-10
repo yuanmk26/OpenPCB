@@ -71,6 +71,16 @@ def _mode_for_task(task_type: AgentTaskType) -> str:
     return "schematic_design"
 
 
+def _board_class_label(board_class: str) -> str:
+    mapping = {
+        "mcu_core": "单片机核心板",
+        "power": "电源板",
+        "sensor_io": "传感/采集板",
+        "connectivity": "通信连接板",
+    }
+    return mapping.get(board_class, board_class)
+
+
 def _handle_classification_route(session: ChatSession, payload: str) -> bool:
     classifier = RequirementClassifier()
     result = classifier.classify(payload)
@@ -79,14 +89,8 @@ def _handle_classification_route(session: ChatSession, payload: str) -> bool:
 
     session.log("classification_detected", result.to_dict())
     if result.confidence < CLASSIFICATION_CONFIRM_THRESHOLD:
-        typer.echo(
-            (
-                "Detected a possible board-design request, but confidence is low "
-                f"({result.confidence:.2f})."
-            )
-        )
-        typer.echo(f"Reason: {result.reason}")
-        typer.echo("Please clarify the board type, key chip, and major interfaces.")
+        typer.echo(f"我识别到你在描述板卡需求，但把握不高（置信度 {result.confidence:.2f}）。")
+        typer.echo("请补充：板卡类型、主控芯片、关键接口（如 USB/UART/CAN）。")
         return True
 
     _log_decision(
@@ -106,14 +110,10 @@ def _handle_classification_route(session: ChatSession, payload: str) -> bool:
     )
     session.set_pending_action(pending)
     session.log("pending_created", pending.to_dict())
-    typer.echo(
-        (
-            "Detected requirement category: "
-            f"{result.board_class} / {result.board_family} (confidence {result.confidence:.2f})."
-        )
-    )
-    typer.echo(f"Reason: {result.reason}")
-    typer.echo("Confirm to start planning with this requirement? Type /yes to continue or /no to cancel.")
+    class_label = _board_class_label(result.board_class)
+    family_label = result.board_family.upper() if result.board_family != "generic" else "通用"
+    typer.echo(f"已识别需求：{class_label}（{family_label}），置信度 {result.confidence:.2f}。")
+    typer.echo("是否按这个方向开始规划？输入 /yes 继续，输入 /no 取消。")
     return True
 
 

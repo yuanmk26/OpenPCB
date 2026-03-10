@@ -45,62 +45,57 @@ def format_status_lines(session: ChatSession) -> list[str]:
 
 
 def format_confirmation_line(action_route: AgentTaskType) -> str:
-    return f"Confirmation required before `{action_route.value}` writes files. Type /yes to continue or /no to cancel."
+    return f"`{action_route.value}` 会写入项目文件。输入 /yes 继续，或输入 /no 取消。"
 
 
 def format_decision_summary(action_route: AgentTaskType | None, user_goal: str) -> str:
     route = action_route.value if action_route else "none"
-    return f"Decision: {route} (goal={user_goal})"
+    _ = user_goal
+    return f"已识别操作：{route}"
 
 
 def format_run_success(task_type: AgentTaskType, result: RunResult) -> list[str]:
-    lines = [f"Conclusion: `{task_type.value}` completed."]
+    lines = [f"已完成：`{task_type.value}`。"]
     if task_type == AgentTaskType.PLAN:
         project = result.outputs.get("project", {})
         modules = project.get("modules", []) if isinstance(project, dict) else []
-        llm_meta = result.outputs.get("llm_meta", {})
         lines.extend(
             [
-                f"Key changes: wrote {result.outputs.get('project_json')} and {result.outputs.get('plan_md')}",
-                f"- modules: {len(modules)}",
-                (
-                    f"- planner: {llm_meta.get('provider', 'unknown')}/{llm_meta.get('model', 'unknown')} "
-                    f"tokens={llm_meta.get('token_usage', 'n/a')} latency={llm_meta.get('latency_ms', 'n/a')}ms"
-                ),
+                "已生成规划文件：",
+                f"- project.json: {result.outputs.get('project_json')}",
+                f"- plan.md: {result.outputs.get('plan_md')}",
+                f"- 规划模块数：{len(modules)}",
             ]
         )
     elif task_type == AgentTaskType.BUILD:
         artifacts = result.outputs.get("artifacts", {})
-        lines.append("Key changes: build artifacts updated.")
+        lines.append("已更新构建产物：")
         for key, value in artifacts.items():
             lines.append(f"- {key}: {value}")
     elif task_type == AgentTaskType.CHECK:
         check_result = result.outputs.get("check_result", {})
         lines.extend(
             [
-                "Key changes: check report generated.",
-                f"- errors: {len(check_result.get('errors', []))}",
-                f"- warnings: {len(check_result.get('warnings', []))}",
-                f"- report: {check_result.get('report')}",
+                "已生成检查结果：",
+                f"- 错误数：{len(check_result.get('errors', []))}",
+                f"- 告警数：{len(check_result.get('warnings', []))}",
+                f"- 报告：{check_result.get('report')}",
             ]
         )
     elif task_type == AgentTaskType.EDIT:
         lines.extend(
             [
-                "Key changes: project.json updated by edit instruction.",
-                f"- report: {result.outputs.get('edit_report')}",
+                "已按指令更新项目文件。",
+                f"- 报告：{result.outputs.get('edit_report')}",
             ]
         )
-
-    if result.trace_file:
-        lines.append(f"Trace: {result.trace_file}")
     return lines
 
 
 def format_run_failure(task_type: AgentTaskType, error: str, trace_file: Path | None = None) -> list[str]:
-    lines = [f"Conclusion: `{task_type.value}` failed.", f"- reason: {error}"]
+    lines = [f"`{task_type.value}` 执行失败。", f"- 原因：{error}"]
     if trace_file:
-        lines.append(f"Trace: {trace_file}")
+        lines.append(f"- 调试日志：{trace_file}")
     return lines
 
 
