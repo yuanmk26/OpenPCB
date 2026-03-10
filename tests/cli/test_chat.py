@@ -141,6 +141,7 @@ def test_chat_requirement_text_yes_enters_brief_collection() -> None:
         assert "已识别需求：单片机核心板（STM32）" in result.stdout
         assert "先补全架构信息，再进入规划流程。" in result.stdout
         assert "问题 1/6：" in result.stdout
+        assert "4) 自定义输入" in result.stdout
         assert not (Path("demo") / "project.json").exists()
 
 
@@ -196,6 +197,8 @@ def test_chat_requirement_text_brief_complete_then_yes_runs_plan() -> None:
         brief = project.get("metadata", {}).get("architecture_brief", {})
         assert classification.get("board_class") == "mcu_core"
         assert classification.get("board_family") == "stm32"
+        assert project.get("metadata", {}).get("architecture_brief_template_id") == "architecture_brief_mcu_core"
+        assert project.get("metadata", {}).get("architecture_brief_template_version") == "v1"
         assert brief.get("board_goal")
         assert brief.get("power_input")
         assert brief.get("key_interfaces")
@@ -222,3 +225,31 @@ def test_chat_requirement_text_no_cancels_during_brief() -> None:
         assert result.exit_code == 0
         assert "Cancelled pending `plan`." in result.stdout
         assert not (Path("demo") / "project.json").exists()
+
+
+def test_chat_brief_option_and_custom_input_flow() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "\u6211\u60f3\u8bbe\u8ba1\u4e00\u4e2aSTM32\u6838\u5fc3\u677f\n"
+            "/yes\n"
+            "1\n"
+            "2\n"
+            "3\n"
+            "1\n"
+            "4\n"
+            "85x60mm \u56db\u5c42\u677f\n"
+            "2\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "已选择自定义，请输入你的具体内容。" in result.stdout
+        assert "架构信息已补全，可输入 /yes 开始规划。" in result.stdout
+        assert (Path("demo") / "project.json").exists()

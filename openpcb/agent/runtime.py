@@ -118,6 +118,8 @@ class AgentRuntime:
         intent = parse_requirement(requirement)
         classification = context.state.get("classification")
         architecture_brief = context.state.get("architecture_brief")
+        architecture_brief_template_id = context.state.get("architecture_brief_template_id")
+        architecture_brief_template_version = context.state.get("architecture_brief_template_version")
         return ToolResult(
             ok=True,
             data={
@@ -127,6 +129,8 @@ class AgentRuntime:
                     "modules": intent.modules,
                     "classification": classification,
                     "architecture_brief": architecture_brief,
+                    "architecture_brief_template_id": architecture_brief_template_id,
+                    "architecture_brief_template_version": architecture_brief_template_version,
                 }
             },
             message="intent_parsed",
@@ -139,6 +143,8 @@ class AgentRuntime:
         requirement = str(intent_payload.get("requirement", ""))
         classification = intent_payload.get("classification")
         architecture_brief = intent_payload.get("architecture_brief")
+        architecture_brief_template_id = intent_payload.get("architecture_brief_template_id")
+        architecture_brief_template_version = intent_payload.get("architecture_brief_template_version")
         project_name = str(context.options.get("project_name", "openpcb_project"))
         settings = load_agent_settings(
             config_path=context.options.get("config_path"),
@@ -163,6 +169,10 @@ class AgentRuntime:
             spec.metadata["classification"] = classification
         if architecture_brief:
             spec.metadata["architecture_brief"] = architecture_brief
+        if architecture_brief_template_id:
+            spec.metadata["architecture_brief_template_id"] = architecture_brief_template_id
+        if architecture_brief_template_version:
+            spec.metadata["architecture_brief_template_version"] = architecture_brief_template_version
         return ToolResult(
             ok=True,
             data={"project": spec.model_dump(), "llm_meta": llm_meta},

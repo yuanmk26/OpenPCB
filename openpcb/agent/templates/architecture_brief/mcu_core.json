@@ -1,0 +1,98 @@
+{
+  "template_id": "architecture_brief_mcu_core",
+  "version": "v1",
+  "required_fields": [
+    "board_goal",
+    "power_input",
+    "key_interfaces",
+    "performance_constraints",
+    "size_constraints",
+    "cost_priority"
+  ],
+  "questions": [
+    {
+      "field": "board_goal",
+      "label": "板卡目标",
+      "question": "这块 MCU 核心板主要做什么？",
+      "options": [
+        "通用控制核心板",
+        "运动控制核心板",
+        "传感采集控制板"
+      ],
+      "custom_hint": "请描述应用场景，例如“四轴电机控制与状态监测”。",
+      "validation": {
+        "min_length": 4
+      }
+    },
+    {
+      "field": "power_input",
+      "label": "输入电源",
+      "question": "核心板输入电源方式是？",
+      "options": [
+        "USB 5V",
+        "12V 转 5V/3.3V",
+        "电池供电"
+      ],
+      "custom_hint": "请写明电压和稳压路径，例如“24V 输入，板上降压到 5V/3.3V”。",
+      "validation": {
+        "min_length": 4
+      }
+    },
+    {
+      "field": "key_interfaces",
+      "label": "关键接口",
+      "question": "核心板对外需要哪些关键接口？",
+      "options": [
+        "SWD + UART + USB",
+        "CAN + UART + GPIO",
+        "SPI + I2C + ADC"
+      ],
+      "custom_hint": "可写“调试接口 + 通讯接口 + 外设接口”的组合。",
+      "validation": {
+        "min_length": 4
+      }
+    },
+    {
+      "field": "performance_constraints",
+      "label": "性能约束",
+      "question": "对 MCU 性能有什么要求？",
+      "options": [
+        "低功耗待机优先",
+        "实时控制优先",
+        "浮点运算能力优先"
+      ],
+      "custom_hint": "例如“168MHz，1ms 控制周期，低功耗待机”。",
+      "validation": {
+        "min_length": 4
+      }
+    },
+    {
+      "field": "size_constraints",
+      "label": "尺寸约束",
+      "question": "板卡尺寸和结构限制是什么？",
+      "options": [
+        "无硬性尺寸限制",
+        "小尺寸（<60x40mm）",
+        "中等尺寸（约80x60mm）"
+      ],
+      "custom_hint": "建议注明外形尺寸、层数、安装孔和连接器方向。",
+      "validation": {
+        "min_length": 2
+      }
+    },
+    {
+      "field": "cost_priority",
+      "label": "成本优先级",
+      "question": "该核心板成本策略是？",
+      "options": [
+        "低成本优先",
+        "平衡成本与性能",
+        "性能稳定优先"
+      ],
+      "custom_hint": "可写目标 BOM 区间，例如“核心板 BOM 控制在 80 元以内”。",
+      "validation": {
+        "min_length": 2
+      }
+    }
+  ]
+}
