@@ -13,6 +13,7 @@ from openpcb.utils.errors import InputError
 @dataclass
 class BriefCollectResult:
     next_question: str | None
+    template_question: str | None
     options: list[str]
     updated_brief: dict[str, str]
     missing_fields: list[str]
@@ -81,6 +82,7 @@ class ArchitectureBriefCollector:
         if not missing:
             return BriefCollectResult(
                 next_question=None,
+                template_question=None,
                 options=[],
                 updated_brief=updated,
                 missing_fields=[],
@@ -95,10 +97,12 @@ class ArchitectureBriefCollector:
         field = pending_field if retry_reason and pending_field else missing[0]
         question = question_map[field]
         index = required_fields.index(field) + 1
-        next_question = f"问题 {index}/{len(required_fields)}：{question['question']}"
+        template_question = str(question["question"])
+        next_question = f"问题 {index}/{len(required_fields)}：{template_question}"
         options = [str(item) for item in question["options"]]
         return BriefCollectResult(
             next_question=next_question,
+            template_question=template_question,
             options=options,
             updated_brief=updated,
             missing_fields=missing,
@@ -213,4 +217,3 @@ class ArchitectureBriefCollector:
             hint = str(question.get("custom_hint", "请输入更具体的信息。"))
             return None, f"输入内容过短。{hint}"
         return text.strip(), None
-

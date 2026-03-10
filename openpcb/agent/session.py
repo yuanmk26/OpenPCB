@@ -48,6 +48,7 @@ class ChatSession:
     brief_expect_custom_input: bool = False
     brief_template_id: str = ""
     brief_template_version: str = ""
+    brief_question_cache: dict[str, str] = field(default_factory=dict)
     brief_completed: bool = False
     last_user_goal: str | None = None
     last_decision: dict[str, Any] | None = None
@@ -113,6 +114,7 @@ class ChatSession:
         self.brief_expect_custom_input = False
         self.brief_template_id = ""
         self.brief_template_version = ""
+        self.brief_question_cache = {}
         self.brief_completed = False
 
     def set_mode(self, mode: str, *, source: str = "system") -> None:

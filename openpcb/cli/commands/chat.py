@@ -1,12 +1,15 @@
-﻿"""Interactive REPL command for OpenPCB."""
+"""Interactive REPL command for OpenPCB."""
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 
 import typer
 
 from openpcb.agent.brief_collector import ArchitectureBriefCollector
+from openpcb.agent.brief_question_generator import BriefQuestionGenerator
 from openpcb.agent.chat_agent import ChatAgent
 from openpcb.agent.classifier import RequirementClassifier
 from openpcb.agent.llm.types import LLMError
@@ -109,7 +112,80 @@ def _show_brief_question(question: str, options: list[str]) -> None:
         typer.echo(f"1) {options[0]}  2) {options[1]}  3) {options[2]}  4) 自定义输入")
 
 
-def _start_brief_collection(session: ChatSession, classification: dict[str, str | float | bool]) -> None:
+def _brief_cache_key(
+    *,
+    template_id: str,
+    field: str,
+    brief: dict[str, str],
+    board_class: str,
+    board_family: str,
+) -> str:
+    brief_hash = hashlib.sha1(json.dumps(brief, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+    return f"{template_id}|{field}|{board_class}|{board_family}|{brief_hash}"
+
+
+def _resolve_brief_question_text(
+    session: ChatSession,
+    *,
+    collector: ArchitectureBriefCollector,
+    classification: dict[str, str | float | bool],
+    result_question: str,
+    current_field: str,
+    options: list[str],
+    missing_fields: list[str],
+    template_id: str,
+    config: Path,
+    provider: str | None,
+    model: str | None,
+) -> str:
+    board_class = str(classification.get("board_class", "generic"))
+    board_family = str(classification.get("board_family", "generic"))
+    key = _brief_cache_key(
+        template_id=template_id,
+        field=current_field,
+        brief=session.architecture_brief,
+        board_class=board_class,
+        board_family=board_family,
+    )
+    cached = session.brief_question_cache.get(key)
+    if cached:
+        return cached
+
+    try:
+        settings = load_agent_settings(
+            config_path=config,
+            overrides={
+                "provider": provider,
+                "model": model,
+                "use_mock_planner": False,
+            },
+        )
+        generator = BriefQuestionGenerator()
+        text = generator.generate(
+            settings=settings,
+            board_class=board_class,
+            board_family=board_family,
+            current_field=current_field,
+            field_label=collector.label_for(current_field, board_class=board_class),
+            template_question=result_question,
+            options=options,
+            filled_brief_summary=session.architecture_brief,
+            missing_fields=missing_fields,
+        )
+        session.brief_question_cache[key] = text
+        return text
+    except (InputError, LLMError, Exception):
+        return result_question
+
+
+def _start_brief_collection(
+    session: ChatSession,
+    classification: dict[str, str | float | bool],
+    *,
+    config: Path,
+    provider: str | None,
+    model: str | None,
+) -> None:
     collector = ArchitectureBriefCollector()
     result = collector.collect(
         board_class=str(classification.get("board_class", "other")),
@@ -165,10 +241,31 @@ def _start_brief_collection(session: ChatSession, classification: dict[str, str 
     session.log("pending_created", pending.to_dict())
     if result.next_question:
         typer.echo("先补全架构信息，再进入规划流程。")
-        _show_brief_question(result.next_question, result.options)
+        question_text = _resolve_brief_question_text(
+            session,
+            collector=collector,
+            classification=classification,
+            result_question=result.template_question or result.next_question,
+            current_field=next_field,
+            options=result.options,
+            missing_fields=result.missing_fields,
+            template_id=result.template_id,
+            config=config,
+            provider=provider,
+            model=model,
+        )
+        idx = len(session.brief_required_fields) - len(result.missing_fields) + 1
+        _show_brief_question(f"问题 {idx}/{len(session.brief_required_fields)}：{question_text}", result.options)
 
 
-def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
+def _handle_brief_answer(
+    session: ChatSession,
+    payload: str,
+    *,
+    config: Path,
+    provider: str | None,
+    model: str | None,
+) -> bool:
     if session.pending_action is None:
         return False
     stage = _pending_stage(session)
@@ -237,7 +334,21 @@ def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
             typer.echo(hint)
             return True
     if result.next_question:
-        _show_brief_question(result.next_question, result.options)
+        question_text = _resolve_brief_question_text(
+            session,
+            collector=collector,
+            classification=classification,
+            result_question=result.template_question or result.next_question,
+            current_field=next_field,
+            options=result.options,
+            missing_fields=result.missing_fields,
+            template_id=result.template_id,
+            config=config,
+            provider=provider,
+            model=model,
+        )
+        idx = len(session.brief_required_fields) - len(result.missing_fields) + 1
+        _show_brief_question(f"问题 {idx}/{len(session.brief_required_fields)}：{question_text}", result.options)
     return True
 
 
@@ -438,7 +549,13 @@ def command(
                     typer.echo("分类信息异常，请重新描述需求。", err=True)
                     session.clear_pending_action()
                     continue
-                _start_brief_collection(session, classification_payload)
+                _start_brief_collection(
+                    session,
+                    classification_payload,
+                    config=config,
+                    provider=provider,
+                    model=model,
+                )
                 continue
             if stage == BRIEF_STAGE_COLLECTING:
                 missing_labels = _brief_missing_labels(session)
@@ -464,7 +581,24 @@ def command(
                         session.brief_pending_field = prompt_result.current_field
                         session.brief_field_options = prompt_result.options
                         session.brief_expect_custom_input = False
-                        _show_brief_question(prompt_result.next_question, prompt_result.options)
+                        question_text = _resolve_brief_question_text(
+                            session,
+                            collector=collector,
+                            classification=classification_payload if isinstance(classification_payload, dict) else {},
+                            result_question=prompt_result.template_question or prompt_result.next_question,
+                            current_field=str(prompt_result.current_field),
+                            options=prompt_result.options,
+                            missing_fields=prompt_result.missing_fields,
+                            template_id=prompt_result.template_id,
+                            config=config,
+                            provider=provider,
+                            model=model,
+                        )
+                        idx = len(session.brief_required_fields) - len(prompt_result.missing_fields) + 1
+                        _show_brief_question(
+                            f"问题 {idx}/{len(session.brief_required_fields)}：{question_text}",
+                            prompt_result.options,
+                        )
                 continue
             if stage == BRIEF_STAGE_READY and not session.brief_completed:
                 missing_labels = _brief_missing_labels(session)
@@ -561,7 +695,7 @@ def command(
             continue
 
         if action == "text":
-            if _handle_brief_answer(session, payload):
+            if _handle_brief_answer(session, payload, config=config, provider=provider, model=model):
                 continue
             stage = _pending_stage(session)
             if stage == BRIEF_STAGE_CLASSIFIED:

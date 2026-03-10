@@ -47,7 +47,7 @@
         "CAN + UART + GPIO",
         "SPI + I2C + ADC"
       ],
-      "custom_hint": "可写“调试接口 + 通讯接口 + 外设接口”的组合。",
+      "custom_hint": "可写“调试接口 + 通信接口 + 外设接口”的组合。",
       "validation": {
         "min_length": 4
       }

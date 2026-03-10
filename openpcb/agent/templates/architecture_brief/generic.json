@@ -13,13 +13,13 @@
     {
       "field": "board_goal",
       "label": "板卡目标",
-      "question": "这块板主要用途是什么？要完成哪些核心功能？",
+      "question": "这块板的主要用途是什么，需要完成哪些核心功能？",
       "options": [
         "功能验证与快速原型",
         "量产前工程样机",
-        "稳定运行的控制主板"
+        "长期稳定运行主板"
       ],
-      "custom_hint": "请描述核心功能和使用场景，例如“用于电机控制和状态采集”。",
+      "custom_hint": "请描述核心功能和应用场景，例如“用于电机控制与状态采集”。",
       "validation": {
         "min_length": 4
       }
@@ -47,7 +47,7 @@
         "I2C + SPI + GPIO",
         "CAN + RS485"
       ],
-      "custom_hint": "请列出主要接口组合，例如“USB、CAN、4路ADC”。",
+      "custom_hint": "请列出主要接口组合，例如“USB、CAN、2路ADC”。",
       "validation": {
         "min_length": 4
       }
