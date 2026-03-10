@@ -1,0 +1,23 @@
+{
+  "name": "openpcb_project",
+  "description": "Auto-generated plan for openpcb_project",
+  "requirements": "你好",
+  "modules": [
+    {
+      "id": "m1",
+      "type": "mcu",
+      "name": "mcu_generic_minimum",
+      "description": "Auto planned module: mcu_generic_minimum",
+      "parameters": {},
+      "interfaces": [],
+      "constraints": []
+    }
+  ],
+  "components": [],
+  "nets": [],
+  "constraints": [],
+  "artifacts": {},
+  "metadata": {
+    "planner": "rule-mock-v1"
+  }
+}

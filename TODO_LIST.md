@@ -264,7 +264,7 @@
 ## Milestone H: Interactive CLI
 
 ### H1 chat 命令骨架
-- 状态：`进行中`
+- 状态：`已完成`
 - 输入：`openpcb chat --project-dir <dir> [--config ...]`
 - 输出：可持续输入的 REPL 会话
 - 依赖：B3, C1, D3, E3
@@ -272,7 +272,7 @@
 - 测试点：`tests/cli/test_chat.py`
 
 ### H2 会话状态与日志
-- 状态：`进行中`
+- 状态：`已完成`
 - 输入：会话动作序列
 - 输出：`logs/session-*.jsonl` + 内存状态对象
 - 依赖：H1
@@ -280,7 +280,7 @@
 - 测试点：`tests/agent/test_session.py`
 
 ### H3 交互动作路由（plan/build/check/edit）
-- 状态：`进行中`
+- 状态：`已完成`
 - 输入：REPL 指令（文本、`/build`、`/check`、`/edit ...`）
 - 输出：对应 runtime 执行结果
 - 依赖：H1, H2
@@ -288,7 +288,7 @@
 - 测试点：`tests/cli/test_chat.py::test_chat_sequence_plan_build_check_exit`
 
 ### H4 可用性与错误恢复
-- 状态：`进行中`
+- 状态：`已完成`
 - 输入：异常场景（未 plan 即 build、模型失败）
 - 输出：清晰提示且会话不中断
 - 依赖：H3
@@ -296,7 +296,7 @@
 - 测试点：`tests/cli/test_chat.py::test_chat_build_before_plan_shows_hint`
 
 ### H5 交互文档与示例
-- 状态：`进行中`
+- 状态：`已完成`
 - 输入：chat 命令行为
 - 输出：README 交互式使用小节与示例
 - 依赖：H1-H4

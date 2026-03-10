@@ -303,3 +303,36 @@ openpcb> /exit
 ```
 
 会话日志会写入：`<project_dir>/logs/session-*.jsonl`。
+
+## Chat Mode (Conversation-Oriented)
+
+`openpcb chat` now supports automatic action routing from plain text.
+
+- Plain text is auto-routed to `plan`, `build`, `check`, or `edit`.
+- Write actions (`build`, `edit`) require confirmation first.
+- Use `/yes` to execute pending write action, `/no` to cancel it.
+- Slash commands are still available as force routes: `/build`, `/check`, `/edit <instruction>`.
+
+### Recommended flow
+
+```text
+openpcb> design stm32 with usb and led
+openpcb> add one more led
+openpcb> /yes
+openpcb> build outputs
+openpcb> /yes
+openpcb> check power risks
+openpcb> /exit
+```
+
+### Session and trace logs
+
+- Session log: `<project_dir>/logs/session-*.jsonl`
+- Runtime trace log: `<project_dir>/logs/agent-run-*.jsonl`
+
+Session log entries now include:
+- `decision`
+- `requires_confirmation`
+- `confirmed`
+- `action_route`
+- `reply_style`

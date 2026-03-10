@@ -9,6 +9,24 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from openpcb.agent.models import AgentTaskType
+
+
+@dataclass
+class PendingAction:
+    action_route: AgentTaskType
+    payload: str = ""
+    user_goal: str = ""
+    requires_confirmation: bool = True
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "action_route": self.action_route.value,
+            "payload": self.payload,
+            "user_goal": self.user_goal,
+            "requires_confirmation": self.requires_confirmation,
+        }
+
 
 @dataclass
 class ChatSession:
@@ -17,6 +35,10 @@ class ChatSession:
     project_json_path: Path | None = None
     last_plan: dict[str, Any] | None = None
     last_artifacts: dict[str, Any] | None = None
+    pending_action: PendingAction | None = None
+    last_user_goal: str | None = None
+    last_decision: dict[str, Any] | None = None
+    last_result_summary: dict[str, Any] | None = None
     history: list[dict[str, Any]] = field(default_factory=list)
     log_file: Path | None = None
 
@@ -42,6 +64,12 @@ class ChatSession:
             self.log_file.parent.mkdir(parents=True, exist_ok=True)
             with self.log_file.open("a", encoding="utf-8") as fp:
                 fp.write(json.dumps(item, ensure_ascii=False) + "\n")
+
+    def set_pending_action(self, pending: PendingAction) -> None:
+        self.pending_action = pending
+
+    def clear_pending_action(self) -> None:
+        self.pending_action = None
 
 
 def parse_repl_input(user_input: str) -> tuple[str, str]:

@@ -1,0 +1,2 @@
+{"ts": "2026-03-09T14:06:27.164523+00:00", "session_id": "20260309-220627-d49f1a88", "event": "session_started", "payload": {"project_dir": "E:\\projects\\3-Ai-agent\\OpenPCB"}}
+{"ts": "2026-03-09T14:06:29.645939+00:00", "session_id": "20260309-220627-d49f1a88", "event": "user_input", "payload": {"raw": "你好", "action": "text"}}

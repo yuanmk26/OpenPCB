@@ -18,6 +18,7 @@ def test_chat_sequence_plan_build_check_exit() -> None:
         user_input = (
             "design stm32 with usb and led\n"
             "/build\n"
+            "/yes\n"
             "/check\n"
             "/exit\n"
         )
@@ -27,9 +28,10 @@ def test_chat_sequence_plan_build_check_exit() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "Plan completed. Preview:" in result.stdout
-        assert "Build completed." in result.stdout
-        assert "Check completed." in result.stdout
+        assert "Conclusion: `plan` completed." in result.stdout
+        assert "Confirmation required before `build` writes files." in result.stdout
+        assert "Conclusion: `build` completed." in result.stdout
+        assert "Conclusion: `check` completed." in result.stdout
         assert "Session ended." in result.stdout
         assert (Path("demo") / "project.json").exists()
         assert (Path("demo") / "output" / "bom.json").exists()
@@ -46,4 +48,25 @@ def test_chat_build_before_plan_shows_hint() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "No project plan yet. Please enter a requirement first to run plan." in result.stderr
+        assert "Cannot run `build` yet. Please run plan first." in result.stderr
+
+
+def test_chat_text_edit_requires_confirmation() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "design stm32 with usb and led\n"
+            "add one more led\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "Decision: edit" in result.stdout
+        assert "Confirmation required before `edit` writes files." in result.stdout
+        assert "Conclusion: `edit` completed." in result.stdout
