@@ -6,7 +6,8 @@
 
 1. `system-architecture.md`：全局分层、端到端主流程、产物契约。
 2. `agent-architecture.md`：Agent 编排边界、执行模型、对话路由与日志。
-3. `pcb-pipeline-architecture.md`：PCB 主链路（IR、模板/规则、导出接口）实现规范。
+3. `mode-action-architecture.md`：Mode / Action / Toolchain 解耦设计。
+4. `pcb-pipeline-architecture.md`：PCB 主链路（IR、模板/规则、导出接口）实现规范。
 
 ## 文档标注规范
 

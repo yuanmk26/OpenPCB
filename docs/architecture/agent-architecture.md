@@ -1,135 +1,252 @@
-# OpenPCB Agent 架构（Current + Target）
+# OpenPCB Agent Architecture (Current + Target)
 
-## 背景
+## Background
 
-OpenPCB 的 Agent 负责“对话、任务决策与执行编排”，而不是直接承载 PCB 导出格式细节。
+OpenPCB Agent is responsible for conversation, intent routing, task orchestration, and execution policy.
+It should not bind PCB workflow stages directly to concrete tools too early.
 
-- Current：单 `AgentRuntime` + 命令式 tool 调用 + `chat` 对话路由
-- Target：conversation-first shell + Chat Agent + task router + 可扩展 tool registry
+This document defines the new target architecture around:
 
-## 现状（Current）
+- `mode` as the current PCB work perspective
+- `action` as the stable execution verb
+- `toolchain` as a late-bound implementation detail
 
-实现状态：`已实现`（基础闭环）
+## Current
 
-### 分层
-- Conversation Orchestrator：`chat` 文本意图路由、写盘确认（`/yes`、`/no`）
-- Runtime：`run(task_type, input_payload, options)` 执行循环
-- Tools：`intent/planner/save/load/build/check/edit`
-- Domain adapters：对接 parser/planner/builder/checker/executor
+Implementation status: `已实现` for the basic runtime loop, `进行中` for conversation-first orchestration
 
-### 执行模型
-- 固定循环：`observe -> plan_steps -> step retry -> reflect -> finalize(trace)`
-- 每步输出 `ToolResult`，任务输出 `RunResult`
-- trace 文件写入：`logs/agent-run-*.jsonl`
+### Current layering
 
-### 当前问题
-- `chat` 更像“命令路由器”，而不是“对话优先的 agent shell”
-- 普通文本会直接映射到 `plan/build/check/edit`，缺少独立的纯聊天通道
-- `openpcb` 默认入口仍是 CLI help，而不是交互式会话
+- Conversation Orchestrator: `chat` REPL, confirmation flow, slash commands
+- Runtime: `run(task_type, input_payload, options)`
+- Hardcoded task execution: `PLAN / BUILD / CHECK / EDIT`
+- Domain adapters: parser, planner, builder, checker, executor
 
-## 目标（Target）
+### Current execution model
 
-实现状态：`进行中`
+- Fixed loop: `observe -> plan_steps -> step retry -> reflect -> finalize`
+- Step chains are selected only by `task_type`
+- Runtime writes trace logs to `logs/agent-run-*.jsonl`
 
-- Conversation-first Shell：`openpcb` 无参数直接进入交互界面
-- Chat Agent：先负责稳定对话，再决定是否升级为任务请求
-- Task Router：把对话消息判定为普通问答或 `plan/build/check/edit`
-- Tool Registry：工具注册与发现统一化（替代 runtime 内硬编码步骤）
-- Task Graph：支持同一任务中的可扩展步骤图与中断恢复
-- 更细粒度错误分类：输入错误、工具错误、可重试错误、不可恢复错误
+### Current problems
 
-## 边界与职责
+- `task_type` is too coarse for real PCB work
+- There is no explicit representation of the current PCB work perspective
+- Adding PCB phases directly as new task types would make runtime harder to evolve
+- Tools are implicitly coupled to tasks instead of selected by policy
 
-### Agent 负责（已实现）
-- 决定做什么（`task_type`）
-- 以统一循环执行工具链
-- 产生日志与结果摘要
+## Target
 
-### Chat Agent 负责（目标，进行中）
-- 维护多轮对话历史
-- 组织 LLM 请求与自然语言回复
-- 生成欢迎词、引导提示与下一步建议
-- 判断是“继续聊天”还是“升级为任务执行”
+Implementation status: `未开始`
 
-### Agent 不负责（已实现边界）
-- KiCad 具体格式的领域建模细节
-- 器件布局/布线算法
-- 模板库内容定义
+### Core principle
 
-这些由 PCB Domain/IR 流水线负责，见 [pcb-pipeline-architecture.md](e:/projects/3-Ai-agent/OpenPCB/docs/architecture/pcb-pipeline-architecture.md)。
+The agent should decide:
 
-## 关键接口（稳定契约）
+1. whether the user is chatting or entering PCB work
+2. which `mode` best matches the current work perspective
+3. which `action` should be executed in that mode
+4. which toolchain should be selected by policy
 
-- `run(task_type, input_payload, options) -> RunResult`
-- `ToolResult`：`ok/data/error/message`
-- `RunResult`：`ok/task_type/outputs/trace_file/error`
+The key rule is:
 
-稳定性说明：`task_type` 与 `RunResult` 字段语义不随 chat 或 provider 切换而变化。
+`mode != action != tool`
 
-## Chat Agent v1
+### Mode
 
-实现状态：`未开始`
+`mode` represents the current PCB work perspective, not a hardcoded process state.
 
-### 目标
-- 先打通稳定对话，不直接执行 PCB 任务
-- 让 `openpcb` 进入后就是一个可持续交流的 agent shell
+Recommended initial modes:
 
-### 建议结构
-- `Shell`：负责读取输入、渲染欢迎词、slash 命令、退出
-- `ChatSession`：负责保存消息历史、session id、日志路径、当前配置
-- `ChatAgent`：负责把历史消息组织成 LLM 请求并输出自然语言回复
-- `TaskRouter`：后续用于把某些对话升级为 `plan/build/check/edit`
+- `system_architecture`
+- `schematic_design`
+- `schematic_check`
+- `placement`
+- `power_layout`
+- `routing`
 
-### v1 行为边界
-- 默认行为：普通文本直接与大模型对话
-- 保留控制命令：`/help`、`/exit`、`/clear`、`/status`
-- 暂不自动执行：`plan/build/check/edit`
-- 写盘动作确认流保留到 v2 再接回
+Mode responsibilities:
 
-## 结构图（双视图）
+- define current focus
+- constrain available actions
+- provide prompt and policy defaults
+- select preferred tool families later
+
+### Action
+
+`action` is the stable execution verb.
+
+Recommended initial actions:
+
+- `analyze`
+- `plan`
+- `generate`
+- `check`
+- `edit`
+- `review`
+- `export`
+
+Actions should remain more stable than modes and tools.
+
+### Toolchain
+
+`toolchain` is a policy-resolved execution chain for one `(mode, action)` pair.
+
+Examples:
+
+- `schematic_design + plan` may use intent parsing, context normalization, and schematic planning
+- `power_layout + check` may later use rule checks and power integrity heuristics
+
+At this stage, toolchains should remain abstract contracts, not concrete KiCad bindings.
+
+## Proposed components
+
+### 1) Conversation Router
+
+- decides chat vs PCB work
+- extracts candidate mode and action
+- decides whether clarification or confirmation is needed
+
+### 2) Mode Router
+
+- maps user text and session context to a target mode
+- updates session mode when confidence is sufficient
+- supports explicit mode switching later
+
+### 3) Session State
+
+- stores `current_mode`
+- stores normalized project context
+- stores recent results and pending actions
+- stores confirmed constraints and assumptions
+
+### 4) Action Resolver
+
+- resolves the final action under the current mode
+- rejects unsupported `(mode, action)` pairs
+- normalizes user input into runtime payloads
+
+### 5) Mode Policy
+
+- selects the toolchain for a `(mode, action)` pair
+- defines mode-specific prompt or guardrails
+- keeps tool binding outside the top-level router
+
+### 6) Runtime Executor
+
+- executes the resolved toolchain
+- keeps retry, trace, and error handling generic
+- should not encode PCB phase semantics directly
+
+## Target data flow
 
 ```mermaid
 flowchart TD
-    subgraph Current
-        C1[Conversation\nchat + confirm] --> C2[AgentRuntime]
-        C2 --> C3[Hardcoded step planning]
-        C3 --> C4[Domain adapters]
-    end
-
-    subgraph Target
-        T1[Conversation-first shell]
-        T2[Chat Agent]
-        T3[Task router]
-        T4[Tool registry]
-        T5[Task graph executor]
-        T1 --> T2 --> T3 --> T5
-        T4 --> T5
-    end
+    U[User Message] --> R[Conversation Router]
+    R --> D{Chat or PCB work}
+    D -->|Chat| C[Chat Agent Reply]
+    D -->|PCB work| M[Mode Router]
+    M --> S[Session State]
+    S --> A[Action Resolver]
+    A --> P[Mode Policy]
+    P --> T[Toolchain]
+    T --> X[Runtime Executor]
+    X --> O[Result + State Update]
 ```
 
-## 失败模式与恢复
+## Session model
 
-### Current
-- `plan` 缺少 API key：明确错误返回（`InputError`），REPL 可继续
-- 某 step 失败：按 `retries` 重试，最终失败并写 trace
-- 未 plan 就 build/edit：会话层阻断并提示先 plan
+### Recommended session fields
 
-### Target（进行中）
-- 对话失败时优先保证 shell 不退出，并提示配置或网络问题
-- 普通聊天与任务执行分流，避免误触发写盘动作
-- 失败分级可观测（error code）
-- 可恢复步骤重放（按 task graph）
+- `current_mode`
+- `project_context`
+- `pending_action`
+- `last_result`
+- `confirmed_constraints`
+- `assumptions`
 
-## 测试映射
+### Important design rule
 
-- Runtime 主链路：`tests/cli/test_plan_build.py`
-- Chat 路由与确认：`tests/cli/test_chat.py`
-- 会话状态：`tests/agent/test_session.py`
-- 模型配置与 planner 解析：`tests/agent/test_config_loader.py`、`tests/agent/test_planner_json_parse.py`
+Mode is a working viewpoint, not a one-way workflow stage.
 
-## 下一步
+For example:
 
-1. 新增 `ChatAgent`，让 `openpcb` 默认先成为对话 shell。
-2. 在 chat shell 中先实现纯 LLM 对话通道，再引入 `TaskRouter`。
-3. 把 runtime 的 `_plan_steps` 重构为 registry + policy。
-4. 将 Agent 与 PCB 流水线的接口固定为显式 IR 契约。
+- the user may move from `placement` back to `schematic_design`
+- the user may run `check` repeatedly in different modes
+- the user may stay in one mode while switching actions
+
+This matches real PCB iteration better than a strict linear pipeline state machine.
+
+## Compatibility with current runtime
+
+### Current stable contract
+
+- `run(task_type, input_payload, options) -> RunResult`
+
+### Target evolution
+
+The current runtime should evolve toward:
+
+- `resolve(mode, action, context) -> toolchain`
+- `run(toolchain, input_payload, options) -> RunResult`
+
+This keeps the runtime generic and removes hardcoded PCB stage logic from `_plan_steps()`.
+
+## Minimal v1 landing plan
+
+Implementation status: `进行中`
+
+### Scope
+
+Start with only two modes:
+
+- `system_architecture`
+- `schematic_design`
+
+Start with only two actions:
+
+- `plan`
+- `check`
+
+### Why this scope
+
+- enough to validate mode routing
+- enough to validate mode-specific policy without a large tool surface
+- avoids overfitting early runtime design to future KiCad integrations
+
+## Failure modes
+
+### Risks if mode is treated as task
+
+- too many task enums
+- duplicated tool orchestration
+- high coupling between user phrasing and execution chain
+
+### Risks if mode is treated as rigid workflow state
+
+- difficult iteration across phases
+- awkward support for review, backtracking, and partial edits
+- session state becomes fragile when users switch topics
+
+### Target mitigation
+
+- treat mode as perspective
+- keep action stable
+- use policy to bind toolchains late
+
+## Test mapping
+
+Future tests should cover:
+
+- mode routing from natural language
+- unsupported `(mode, action)` rejection
+- session mode transitions
+- policy resolution for `(mode, action)`
+- runtime execution remaining independent from concrete mode semantics
+
+## Next steps
+
+1. Add `ModeType` and `current_mode` to session state.
+2. Add `ModeRouter` and `ActionResolver`.
+3. Replace hardcoded runtime `_plan_steps()` with policy resolution.
+4. Implement v1 for `system_architecture` and `schematic_design`.

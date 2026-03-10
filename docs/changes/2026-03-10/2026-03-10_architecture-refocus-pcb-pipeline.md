@@ -40,3 +40,9 @@
 1. 在代码层落地 `BuildBundle` 与 exporter 分层，消除 builder 直写文件耦合。
 2. 增加 IR normalizer 阶段并接入 `plan/build` 共享。
 3. 将 checker 升级为规则引擎并按 IR 执行。
+
+## 后续补充
+
+- 基于最新架构讨论，补充 `mode/action/toolchain` 解耦原则。
+- 明确 `mode` 是 PCB 工作视角，不是硬编码线性流程状态。
+- 新增 `docs/architecture/mode-action-architecture.md`，用于承接后续实现。

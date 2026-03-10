@@ -38,16 +38,27 @@
 ### 建议边界
 - 对话阶段输出两类结果：
   - `ChatReply`：继续自然语言回复
-  - `TaskProposal`：建议进入 `plan/build/check/edit`
-- 只有 `TaskProposal` 被确认后，才进入 PCB 流水线
+  - `WorkProposal`：建议进入某个 `mode + action`
+- 只有 `WorkProposal` 被确认后，才进入 PCB 流水线
+
+建议演进为：
+
+- 对话层先决定是否进入 PCB 工作
+- 再决定进入哪个 `mode`
+- 最后在该 `mode` 下选择 `action`
+- PCB 流水线只消费归一化后的结构化输入，不感知聊天细节
 
 ### 进入 PCB 流水线的最小输入
-- `plan`：自然语言需求或已整理的项目上下文
-- `build/check/edit`：`project_dir` 或 `project.json`
+- `mode`
+- `action`
+- 归一化后的任务输入
+- `project_dir` 或 `project.json`（如需要）
 
 ### 设计原则
 - PCB 流水线不直接消费原始聊天日志
 - Chat Agent 如需传递上下文，应先归一化为任务输入载荷
+- 流水线不直接依赖具体模式名称之外的对话行为
+- 具体工具绑定由 mode policy 决定，而不是由流水线顶层决定
 
 ## 阶段职责与接口（v1）
 
@@ -101,7 +112,7 @@ flowchart TD
     end
 
     subgraph Target
-        T0[Confirmed TaskProposal]
+        T0[Confirmed WorkProposal]
         T1[Requirement] --> T2[Intent Parser]
         T2 --> T3[IR Builder/Normalizer]
         T3 --> T4[Planner]
@@ -138,4 +149,4 @@ flowchart TD
 2. 新增 exporter 层，接管 KiCad/BOM/Netlist 写盘。
 3. 增加 IR normalizer，作为 planner 前置阶段。
 4. 对 checker 建立规则插件接口，提升覆盖深度。
-5. 定义 `TaskProposal -> runtime input_payload` 的归一化适配层。
+5. 定义 `WorkProposal -> normalized runtime payload` 的适配层。
