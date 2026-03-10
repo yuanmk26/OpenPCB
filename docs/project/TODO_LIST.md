@@ -263,7 +263,7 @@
 ## Milestone I: CI/CD Foundation
 
 ### I1 CI workflow（PR/main）
-- 状态：`进行中`
+- 状态：`已完成`
 - 输入：GitHub Actions workflow + dev 依赖
 - 输出：PR 与 main 自动执行 `ruff + pytest + build`
 - 依赖：A1, A3
@@ -271,12 +271,12 @@
 - 测试点：`.github/workflows/ci.yml`
 
 ### I2 CD workflow（tag release）
-- 状态：`进行中`
+- 状态：`未开始`
 - 输入：版本 tag（`v*`）
 - 输出：GitHub Release + `dist/*` 构建产物
 - 依赖：I1
 - 验收标准：tag 推送后自动创建/更新 Release 并上传产物
-- 测试点：`.github/workflows/release.yml`
+- 测试点：待 CD 工作流新增后补充
 
 ### I3 CI/CD 规范文档
 - 状态：`已完成`
