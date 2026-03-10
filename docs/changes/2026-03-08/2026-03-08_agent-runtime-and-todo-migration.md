@@ -25,7 +25,7 @@
 - 数据层补齐：
   - 新增 `openpcb/schema/*`（ProjectSpec/ModuleSpec/ComponentSpec/NetSpec/Enums）。
 - 任务文档迁移：
-  - 新增主文档 `TODO_LIST.md`（Agent-first 里程碑结构）。
+  - 新增主文档 `docs/project/TODO_LIST.md`（Agent-first 里程碑结构）。
   - 原 `openpcb_task_breakdown.md` 改为迁移入口与说明。
 
 ## 影响范围
@@ -39,7 +39,7 @@
 - 主要新增文件：
   - `openpcb/agent/runtime.py`
   - `openpcb/cli/commands/build.py`
-  - `TODO_LIST.md`
+  - `docs/project/TODO_LIST.md`
 
 ## 验证结果
 

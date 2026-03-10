@@ -27,7 +27,7 @@
   - 新增 `tests/agent/test_conversation.py`，覆盖文本到动作路由逻辑。
 - 文档更新
   - `README.md` 新增 `Chat Mode (Conversation-Oriented)` 小节。
-  - `TODO_LIST.md` 将 Milestone H（H1~H5）状态更新为 `已完成`。
+  - `docs/project/TODO_LIST.md` 将 Milestone H（H1~H5）状态更新为 `已完成`。
 
 ## 影响范围
 - 主要影响：`openpcb chat` 交互体验与行为语义。

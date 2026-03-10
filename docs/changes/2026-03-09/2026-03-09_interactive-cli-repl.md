@@ -17,7 +17,7 @@
 - CLI 主入口注册 `chat` 命令：
   - 文件：`openpcb/cli/main.py`
 - 更新任务与文档：
-  - `TODO_LIST.md` 新增 Milestone H（Interactive CLI）
+  - `docs/project/TODO_LIST.md` 新增 Milestone H（Interactive CLI）
   - `README.md` 新增“交互式使用（REPL）”小节
 
 ## 影响范围

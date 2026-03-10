@@ -34,7 +34,7 @@
   - 双视图（Current/Target）
   - IR 主对象与阶段接口
   - Build/Export 职责分界
-  - 与 `TODO_LIST.md` 的状态体系一致
+  - 与 `docs/project/TODO_LIST.md` 的状态体系一致
 
 ## 下一步建议
 1. 在代码层落地 `BuildBundle` 与 exporter 分层，消除 builder 直写文件耦合。

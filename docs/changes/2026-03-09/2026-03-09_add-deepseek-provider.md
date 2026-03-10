@@ -17,7 +17,7 @@
 - 更新配置示例：
   - `openpcb/config/example.config.toml` 增加 DeepSeek 示例块
 - 更新任务文档：
-  - `TODO_LIST.md` 中 G2 改为 OpenAI-Compatible（OpenAI/DeepSeek）
+  - `docs/project/TODO_LIST.md` 中 G2 改为 OpenAI-Compatible（OpenAI/DeepSeek）
 - 更新 README：
   - 新增 DeepSeek 快速配置与命令示例
 
@@ -28,7 +28,7 @@
   - `openpcb/agent/llm/factory.py`
   - `openpcb/config/example.config.toml`
   - `README.md`
-  - `TODO_LIST.md`
+  - `docs/project/TODO_LIST.md`
 
 ## 验证结果
 

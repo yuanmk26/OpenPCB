@@ -1,8 +1,9 @@
 ﻿# OpenPCB 文档规范
 
-本目录用于管理项目文档，并将文档分为两类：
+本目录用于管理项目文档，并将文档分为三类：
 - `changes/`：每次任务的变更解释记录
 - `architecture/`：系统与 Agent 架构说明
+- `project/`：项目管理（TODO、里程碑、CI/CD 规则）
 
 ## 目录结构
 
@@ -13,6 +14,10 @@ docs/
     README.md
     agent-architecture.md
     system-architecture.md
+  project/
+    README.md
+    docs/project/TODO_LIST.md
+    CI_CD.md
   changes/
     _TEMPLATE.md
     YYYY-MM-DD/
@@ -43,3 +48,11 @@ docs/
 - 建议在关键流程处标注状态：`已实现` / `进行中` / `未开始`。
 - 新增或重构架构时，同步更新 `architecture/` 文档与本次 `changes/` 记录。
 - 每次任务完成后，默认执行 `git add` + `git commit` + `git push`；如推送失败需明确报错原因。
+
+## project 目录规则
+
+`project/` 用于承载项目管理与工程流程规范。
+- `docs/project/TODO_LIST.md`：里程碑、状态、优先级与验收标准。
+- `CI_CD.md`：持续集成与持续交付规则、触发策略、质量门禁与失败处理。
+- 项目管理规则变化时，同步更新本目录与当日 `docs/changes/<YYYY-MM-DD>/` 记录。
+

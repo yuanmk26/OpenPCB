@@ -27,7 +27,7 @@
   - `plan` 增加 `--provider --model --config --use-mock-planner`
   - trace 增加 `llm_meta`（provider/model/token/latency）
 - 文档更新：
-  - `TODO_LIST.md` 新增 `Milestone G: Model Integration`
+  - `docs/project/TODO_LIST.md` 新增 `Milestone G: Model Integration`
   - `README.md` 新增“模型接入配置（OpenAI）”
 
 ## 影响范围
