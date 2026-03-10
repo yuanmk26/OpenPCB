@@ -1,12 +1,12 @@
-# OpenPCB Mode-Action Architecture (Target v1)
+﻿# OpenPCB Mode-Action Architecture (Target v1)
 
 ## Purpose
 
-This document defines the new orchestration axis for PCB work:
+This document defines the orchestration axis for PCB work:
 
 - `mode` describes the current work perspective
 - `action` describes what the agent is trying to do
-- `toolchain` remains an implementation detail resolved later
+- `toolchain` remains an implementation detail resolved by policy
 
 It is intentionally independent from concrete EDA tools.
 
@@ -40,29 +40,6 @@ It is intentionally independent from concrete EDA tools.
 | `review` | explain tradeoffs and assess quality |
 | `export` | produce downstream artifacts |
 
-## Session transition examples
-
-### Example 1
-
-`system_architecture -> plan`
-
-The user describes a new board idea.
-The agent should stay at architecture level and produce module partitioning or constraints, not jump into layout details.
-
-### Example 2
-
-`schematic_design -> check`
-
-The user asks whether the current USB and power connections are complete.
-The agent stays in schematic context and performs consistency-oriented checks.
-
-### Example 3
-
-`placement -> edit`
-
-The user asks to move the DC-DC section away from the RF front end.
-The mode stays `placement`, but the action becomes `edit`.
-
 ## Policy resolution contract
 
 Suggested contract:
@@ -84,6 +61,19 @@ Where `ToolchainSpec` may contain:
 - only implement `system_architecture` and `schematic_design`
 - only implement `plan` and `check`
 - keep all toolchain steps abstract or mapped to existing planner/checker pieces
+
+## Current landing (2026-03)
+
+Implementation status: `进行中`.
+
+- `current_mode` is persisted in session and can be restored from previous session logs.
+- Entry flow has a requirement gate before `plan`:
+  - requirement classification (`board_class + board_family`)
+  - architecture brief collection (6 required fields)
+  - hard gate before `plan` execution
+- Routing still uses `task_type` execution in runtime; `(mode, action) -> toolchain` policy is not implemented yet.
+
+This means mode-awareness has started at session/conversation level, but runtime orchestration is still task-centric.
 
 ## Future extension
 

@@ -33,9 +33,18 @@
 
 ## 与对话系统的衔接
 
-实现状态：`未开始`
+实现状态：`进行中`
 
-### 建议边界
+### 当前边界（已落地）
+- 对话入口已具备前置门禁：
+  - `RequirementClassifier` 完成板卡类别识别
+  - `ArchitectureBriefCollector` 完成 6 项架构信息补全
+  - 信息补全前不允许进入 `plan`
+- 规划执行时会把对话层信息注入到 `project.metadata`：
+  - `classification`
+  - `architecture_brief`
+
+### 建议边界（目标）
 - 对话阶段输出两类结果：
   - `ChatReply`：继续自然语言回复
   - `WorkProposal`：建议进入某个 `mode + action`
@@ -53,6 +62,8 @@
 - `action`
 - 归一化后的任务输入
 - `project_dir` 或 `project.json`（如需要）
+- `classification`（board_class/board_family）
+- `architecture_brief`（架构必填项集合）
 
 ### 设计原则
 - PCB 流水线不直接消费原始聊天日志
@@ -142,6 +153,9 @@ flowchart TD
 - `tests/cli/test_plan_build.py`：plan/build 结果产物
 - `tests/cli/test_check_edit.py`：check/edit 基础行为
 - `tests/agent/test_planner_json_parse.py`：planner 输出结构化校验
+- `tests/agent/test_classifier.py`：需求分类
+- `tests/agent/test_brief_collector.py`：架构信息补全门禁
+- `tests/cli/test_chat.py`：分类 -> 补全 -> plan 会话链路
 
 ## 下一步
 
@@ -149,4 +163,4 @@ flowchart TD
 2. 新增 exporter 层，接管 KiCad/BOM/Netlist 写盘。
 3. 增加 IR normalizer，作为 planner 前置阶段。
 4. 对 checker 建立规则插件接口，提升覆盖深度。
-5. 定义 `WorkProposal -> normalized runtime payload` 的适配层。
+5. 把 `classification + architecture_brief` 从对话门禁演进为标准化 `WorkProposal` 输入载荷。
