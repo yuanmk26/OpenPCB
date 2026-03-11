@@ -14,7 +14,8 @@ def test_mcu_gap_priority_and_stage_gate() -> None:
         expect_custom_input=False,
     )
     assert result.next_questions
-    assert all(q.priority in {"P0", "P1", "P2"} for q in result.next_questions)
+    assert len(result.next_questions) == 1
+    assert result.next_questions[0].priority in {"P0", "P1", "P2"}
     assert result.stage_status["architecture_ready"] is False
     assert result.stage_status["schematic_ready"] is False
 
@@ -22,7 +23,7 @@ def test_mcu_gap_priority_and_stage_gate() -> None:
 def test_mcu_infer_marks_system_inferred() -> None:
     collector = ArchitectureSchemaCollector()
     values, sources = collector.infer(
-        requirement="我想设计 STM32F103 的核心板，USB 和 CAN 接口",
+        requirement="???? STM32F103 ?????USB ? CAN ??",
         board_class="mcu_core",
         board_family="stm32",
         values={},
