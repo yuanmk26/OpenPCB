@@ -12,6 +12,31 @@ def test_template_load_and_fallback() -> None:
     assert any(s.key == "board_type" for s in fallback_specs)
 
 
+def test_template_loader_accepts_utf8_bom(tmp_path) -> None:  # noqa: ANN001
+    root = tmp_path / "templates"
+    root.mkdir(parents=True, exist_ok=True)
+    payload = (
+        '{'
+        '"template_id":"x",'
+        '"version":"v1",'
+        '"required_fields":["board_type"],'
+        '"fields":[{'
+        '"key":"board_type",'
+        '"label":"板卡类型",'
+        '"priority":"P0",'
+        '"question_seed":"板卡类型是什么？",'
+        '"options":["控制板","电源板","接口板"],'
+        '"custom_hint":"请补充板卡类型。",'
+        '"validation":{"min_length":2}'
+        "}]"
+        "}"
+    )
+    (root / "generic.json").write_text(payload, encoding="utf-8-sig")
+    collector = ArchitectureSchemaCollector(template_root=root)
+    specs = collector.specs_for("unknown")
+    assert specs and specs[0].key == "board_type"
+
+
 def test_single_question_and_priority_gate() -> None:
     collector = ArchitectureSchemaCollector()
     result = collector.collect(

@@ -73,7 +73,8 @@ class TemplateLoader:
             )
 
         try:
-            data = json.loads(path.read_text(encoding="utf-8"))
+            # Support UTF-8 files with/without BOM.
+            data = json.loads(path.read_text(encoding="utf-8-sig"))
         except json.JSONDecodeError as exc:
             raise InputError(f"Invalid JSON template: {path}") from exc
 
