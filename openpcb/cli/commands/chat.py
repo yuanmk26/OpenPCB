@@ -10,6 +10,7 @@ import typer
 from openpcb.agent.architecture_schema_collector import ArchitectureSchemaCollector, QuestionItem
 from openpcb.agent.chat_agent import ChatAgent
 from openpcb.agent.classifier import RequirementClassifier
+from openpcb.agent.component_recommender import ComponentRecommendationService, RecommendationQuestion
 from openpcb.agent.llm.types import LLMError
 from openpcb.agent.models import AgentTaskType
 from openpcb.agent.runtime import AgentRuntime
@@ -32,6 +33,7 @@ BRIEF_STAGE_CLASSIFIED = "classified"
 BRIEF_STAGE_COLLECTING = "brief_collecting"
 BRIEF_STAGE_READY = "ready_to_plan"
 MAX_QUESTIONS_PER_ROUND = 3
+RECOMMENDATION_MAX_CANDIDATES = 3
 
 
 def _print_lines(lines: list[str], err: bool = False) -> None:
@@ -119,6 +121,228 @@ def _show_question(question_text: str, item: QuestionItem, index: int, total: in
     typer.echo(f"问题 {index}/{total} [{item.priority}]：{question_text}")
     opts = item.options
     typer.echo(f"1) {opts[0]}  2) {opts[1]}  3) {opts[2]}  4) 自定义输入")
+
+
+def _show_recommendation_question(question: RecommendationQuestion, index: int, total: int) -> None:
+    typer.echo(f"器件问题 {index}/{total}：{question.prompt}")
+    typer.echo(f"1) {question.options[0]}  2) {question.options[1]}  3) {question.options[2]}  4) 自定义输入")
+
+
+def _recommendation_service() -> ComponentRecommendationService:
+    return ComponentRecommendationService()
+
+
+def _recommendation_ready(session: ChatSession) -> bool:
+    return _pending_stage(session) == BRIEF_STAGE_READY and session.brief_completed
+
+
+def _recommendation_state(session: ChatSession) -> dict[str, Any]:
+    state = session.component_recommendation_state or {}
+    if not isinstance(state, dict):
+        return {}
+    return state
+
+
+def _update_recommendation_state(session: ChatSession, state: dict[str, Any]) -> None:
+    session.component_recommendation_state = state
+    if session.pending_action is not None:
+        session.pending_action.metadata["component_recommendation_state"] = state
+        session.pending_action.metadata["component_recommendations"] = session.component_recommendations
+
+
+def _clear_recommendation_state(session: ChatSession) -> None:
+    session.component_recommendation_state = {}
+    if session.pending_action is not None:
+        session.pending_action.metadata["component_recommendation_state"] = {}
+        session.pending_action.metadata["component_recommendations"] = session.component_recommendations
+
+
+def _recommendation_question_for_state(
+    service: ComponentRecommendationService, state: dict[str, Any]
+) -> RecommendationQuestion | None:
+    category = str(state.get("module_category", ""))
+    questions = service.questions_for(category)
+    if not questions:
+        return None
+    idx = int(state.get("question_index", 0))
+    if idx < 0 or idx >= len(questions):
+        return None
+    return questions[idx]
+
+
+def _show_candidates(
+    *,
+    candidates: list[dict[str, Any]],
+    exact_match_count: int,
+) -> None:
+    if exact_match_count > 0:
+        typer.echo("已找到候选器件：")
+    else:
+        typer.echo("当前库内无明确匹配，以下是最接近候选：")
+    for index, candidate in enumerate(candidates[:RECOMMENDATION_MAX_CANDIDATES], start=1):
+        part = candidate.get("part_number", "")
+        vendor = candidate.get("vendor", "")
+        level = candidate.get("recommendation_level", "C")
+        typer.echo(f"{index}) {part} [{vendor}] 推荐等级 {level}")
+        typer.echo(f"   - 匹配点：{'; '.join(candidate.get('match_points', []) or ['基础能力匹配'])}")
+        gaps = candidate.get("gaps", []) or ["无明显缺口"]
+        typer.echo(f"   - 待确认：{'; '.join(gaps)}")
+    typer.echo("请输入 1/2/3 选择候选，或直接输入具体型号。")
+
+
+def _save_component_recommendation(
+    session: ChatSession,
+    *,
+    category: str,
+    constraints: dict[str, Any],
+    candidates: list[dict[str, Any]],
+    selected_part: str | None,
+    source: str,
+) -> None:
+    session.component_recommendations[category] = {
+        "category": category,
+        "constraints": constraints,
+        "candidates": candidates,
+        "selected_part": selected_part,
+        "source": source,
+    }
+    if session.pending_action is not None:
+        session.pending_action.metadata["component_recommendations"] = session.component_recommendations
+
+
+def _handle_direct_part_capture(
+    session: ChatSession,
+    *,
+    service: ComponentRecommendationService,
+    payload: str,
+    category: str,
+) -> bool:
+    item = service.detect_part_number(payload, category=category)
+    if item is None:
+        return False
+    record = service.serialize_catalog_item(item)
+    _save_component_recommendation(
+        session,
+        category=category,
+        constraints={"raw_text": payload.strip()},
+        candidates=[record],
+        selected_part=record["part_number"],
+        source="user_confirmed",
+    )
+    _clear_recommendation_state(session)
+    typer.echo(f"已记录器件型号：{record['part_number']}。后续规划会将其写入 metadata.component_recommendations。")
+    return True
+
+
+def _start_component_recommendation(session: ChatSession, payload: str) -> bool:
+    if not _recommendation_ready(session):
+        return False
+    if session.pending_action is None:
+        return False
+    classification = session.pending_action.metadata.get("classification")
+    if not isinstance(classification, dict):
+        return False
+    board_class = str(classification.get("board_class", "generic"))
+    service = _recommendation_service()
+    category = service.detect_category(board_class=board_class, text=payload)
+    if category is None:
+        return False
+    if _handle_direct_part_capture(session, service=service, payload=payload, category=category):
+        return True
+
+    state = service.initial_state(category)
+    _update_recommendation_state(session, state)
+    session.log("component_recommendation_started", {"category": category, "payload": payload.strip()})
+    typer.echo(f"已进入 {category} 模块的器件推荐流程。")
+    question = _recommendation_question_for_state(service, state)
+    if question is not None:
+        _show_recommendation_question(question, 1, len(service.questions_for(category)))
+    return True
+
+
+def _handle_component_recommendation_answer(session: ChatSession, payload: str) -> bool:
+    state = _recommendation_state(session)
+    if not state:
+        return False
+
+    service = _recommendation_service()
+    category = str(state.get("module_category", ""))
+    if not category:
+        return False
+
+    if _handle_direct_part_capture(session, service=service, payload=payload, category=category):
+        return True
+
+    status = str(state.get("status", ""))
+    questions = service.questions_for(category)
+    if status == "awaiting_selection":
+        candidates = list(state.get("candidate_parts", []))
+        text = payload.strip()
+        if text in {"1", "2", "3"}:
+            idx = int(text) - 1
+            if idx >= len(candidates):
+                typer.echo("候选超出范围，请输入 1/2/3，或直接输入具体型号。")
+                return True
+            selected = candidates[idx]
+            _save_component_recommendation(
+                session,
+                category=category,
+                constraints=dict(state.get("collected_constraints", {})),
+                candidates=candidates,
+                selected_part=str(selected.get("part_number", "")),
+                source="system_recommended",
+            )
+            _clear_recommendation_state(session)
+            typer.echo(f"已确认推荐器件：{selected.get('part_number', '')}。")
+            return True
+        typer.echo("请输入 1/2/3 选择候选，或直接输入具体型号。")
+        return True
+
+    question = _recommendation_question_for_state(service, state)
+    if question is None:
+        _clear_recommendation_state(session)
+        return False
+
+    answer = payload.strip()
+    if answer in {"1", "2", "3"}:
+        normalized = question.options[int(answer) - 1]
+    elif answer == "4":
+        typer.echo(f"请输入自定义内容。{question.custom_hint}")
+        return True
+    else:
+        if len(answer) < 2:
+            typer.echo(f"输入内容过短。{question.custom_hint}")
+            return True
+        normalized = answer
+
+    constraints = dict(state.get("collected_constraints", {}))
+    constraints[question.key] = normalized
+    next_index = int(state.get("question_index", 0)) + 1
+    if next_index < len(questions):
+        state["collected_constraints"] = constraints
+        state["question_index"] = next_index
+        state["current_question_key"] = questions[next_index].key
+        _update_recommendation_state(session, state)
+        _show_recommendation_question(questions[next_index], next_index + 1, len(questions))
+        return True
+
+    result = service.recommend(category, constraints)
+    candidate_payload = [service.serialize_candidate(candidate) for candidate in result.candidates]
+    state["collected_constraints"] = constraints
+    state["candidate_parts"] = candidate_payload
+    state["status"] = "awaiting_selection"
+    state["current_question_key"] = None
+    _update_recommendation_state(session, state)
+    _save_component_recommendation(
+        session,
+        category=category,
+        constraints=constraints,
+        candidates=candidate_payload,
+        selected_part=None,
+        source="system_recommended",
+    )
+    _show_candidates(candidates=candidate_payload, exact_match_count=result.exact_match_count)
+    return True
 
 
 def _resolve_schema_question_text(
@@ -295,6 +519,7 @@ def _start_brief_collection(
     session.brief_template_id = result.template_id
     session.brief_template_version = result.template_version
     session.brief_completed = bool(result.stage_status.get("architecture_ready", False))
+    session.component_recommendation_state = {}
 
     flow_stage = BRIEF_STAGE_READY if session.brief_completed else BRIEF_STAGE_COLLECTING
     pending = PendingAction(
@@ -308,6 +533,8 @@ def _start_brief_collection(
             "architecture_brief_template_id": result.template_id,
             "architecture_brief_template_version": result.template_version,
             "architecture_stage_status": result.stage_status,
+            "component_recommendations": session.component_recommendations,
+            "component_recommendation_state": session.component_recommendation_state,
         },
     )
     session.set_pending_action(pending)
@@ -471,6 +698,8 @@ def _handle_classification_route(session: ChatSession, payload: str) -> bool:
         confirmed=False,
         source="classifier",
     )
+    session.component_recommendations = {}
+    session.component_recommendation_state = {}
     pending = PendingAction(
         action_route=AgentTaskType.PLAN,
         payload=payload,
@@ -507,6 +736,7 @@ def _run_task(
     architecture_stage_status: dict[str, Any] | None = None,
     architecture_brief_template_id: str | None = None,
     architecture_brief_template_version: str | None = None,
+    component_recommendations: dict[str, Any] | None = None,
 ) -> bool:
     session.set_mode(_mode_for_task(task_type), source=f"task:{task_type.value}")
     options = {
@@ -529,6 +759,8 @@ def _run_task(
             input_payload["architecture_brief_template_id"] = architecture_brief_template_id
         if architecture_brief_template_version:
             input_payload["architecture_brief_template_version"] = architecture_brief_template_version
+        if component_recommendations:
+            input_payload["component_recommendations"] = component_recommendations
         options.update(
             {
                 "project_name": project_name,
@@ -623,7 +855,10 @@ def command(
             continue
 
         if action == "no":
-            if session.pending_action is None:
+            if _recommendation_state(session):
+                _clear_recommendation_state(session)
+                typer.echo("已取消当前器件推荐流程。")
+            elif session.pending_action is None:
                 typer.echo("No pending action to cancel.")
             else:
                 stage = _pending_stage(session)
@@ -728,6 +963,9 @@ def command(
                 architecture_brief_template_version=(
                     session.brief_template_version if pending.action_route == AgentTaskType.PLAN else None
                 ),
+                component_recommendations=(
+                    session.component_recommendations if pending.action_route == AgentTaskType.PLAN else None
+                ),
             )
             if pending.action_route == AgentTaskType.PLAN:
                 session.clear_brief_state(keep_answers=True)
@@ -787,15 +1025,18 @@ def command(
             if _handle_brief_answer(session, payload, config=config, provider=provider, model=model):
                 continue
 
+            if _handle_component_recommendation_answer(session, payload):
+                continue
+
             stage = _pending_stage(session)
             if stage == BRIEF_STAGE_CLASSIFIED:
                 typer.echo("请输入 /yes 进入结构化补全，或输入 /no 取消本次需求。")
                 continue
-            if stage == BRIEF_STAGE_READY:
-                typer.echo("结构化信息已满足规划门禁，请输入 /yes 开始规划，或 /no 取消。")
-                continue
 
             if session.pending_action is None and _handle_classification_route(session, payload):
+                continue
+
+            if stage == BRIEF_STAGE_READY and _start_component_recommendation(session, payload):
                 continue
 
             _log_decision(

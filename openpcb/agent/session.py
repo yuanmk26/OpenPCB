@@ -52,6 +52,8 @@ class ChatSession:
     brief_template_version: str = ""
     brief_question_cache: dict[str, str] = field(default_factory=dict)
     brief_completed: bool = False
+    component_recommendations: dict[str, Any] = field(default_factory=dict)
+    component_recommendation_state: dict[str, Any] = field(default_factory=dict)
     last_user_goal: str | None = None
     last_decision: dict[str, Any] | None = None
     last_result_summary: dict[str, Any] | None = None
@@ -106,12 +108,14 @@ class ChatSession:
     def clear_chat(self) -> None:
         self.chat_messages = []
         self.clear_pending_action()
+        self.component_recommendation_state = {}
 
     def clear_brief_state(self, *, keep_answers: bool = True) -> None:
         if not keep_answers:
             self.architecture_brief = {}
             self.architecture_brief_sources = {}
             self.architecture_stage_status = {}
+            self.component_recommendations = {}
         self.brief_required_fields = []
         self.brief_pending_field = None
         self.brief_field_options = []
@@ -120,6 +124,7 @@ class ChatSession:
         self.brief_template_version = ""
         self.brief_question_cache = {}
         self.brief_completed = False
+        self.component_recommendation_state = {}
 
     def set_mode(self, mode: str, *, source: str = "system") -> None:
         if mode == self.current_mode:

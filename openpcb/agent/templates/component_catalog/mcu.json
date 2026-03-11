@@ -1,0 +1,68 @@
+{
+  "category": "mcu",
+  "items": [
+    {
+      "part_number": "STM32F103C8T6",
+      "vendor": "STMicroelectronics",
+      "category": "mcu",
+      "summary": "入门级 Cortex-M3 MCU，适合基础控制与通用接口采集。",
+      "key_specs": {
+        "performance": "低功耗基础控制",
+        "memory": "小容量（<=128KB Flash）",
+        "interfaces": ["uart", "i2c", "spi", "usb"],
+        "supply_voltage": "2.0V-3.6V",
+        "temperature_range": "-40C to 85C",
+        "package": "LQFP48",
+        "lifecycle": "active"
+      },
+      "package_options": ["LQFP48", "LQFP64"],
+      "typical_use_cases": ["基础控制板", "传感采集节点"],
+      "constraints": {
+        "notes": ["不适合高算力图形或复杂实时控制"]
+      },
+      "priority_tags": ["低成本", "通用控制", "手焊友好"]
+    },
+    {
+      "part_number": "STM32F407VET6",
+      "vendor": "STMicroelectronics",
+      "category": "mcu",
+      "summary": "高性能 Cortex-M4 MCU，适合 USB/CAN/多串口的实时控制核心板。",
+      "key_specs": {
+        "performance": "高性能实时控制",
+        "memory": "中容量（256KB-512KB Flash）",
+        "interfaces": ["usb", "uart", "can", "spi", "i2c"],
+        "supply_voltage": "1.8V-3.6V",
+        "temperature_range": "-40C to 85C",
+        "package": "LQFP100",
+        "lifecycle": "active"
+      },
+      "package_options": ["LQFP100", "LQFP144"],
+      "typical_use_cases": ["机器人控制板", "工业控制核心板"],
+      "constraints": {
+        "notes": ["引脚和面积占用相对更大"]
+      },
+      "priority_tags": ["高性能", "USB", "CAN", "实时控制"]
+    },
+    {
+      "part_number": "ESP32-WROOM-32E",
+      "vendor": "Espressif",
+      "category": "mcu",
+      "summary": "集成 Wi-Fi/BLE 的 MCU 模组，适合联网控制和无线数据采集。",
+      "key_specs": {
+        "performance": "中等通用控制",
+        "memory": "大容量（>=1MB Flash）",
+        "interfaces": ["uart", "spi", "i2c", "wifi", "bluetooth"],
+        "supply_voltage": "3.0V-3.6V",
+        "temperature_range": "-40C to 85C",
+        "package": "Module",
+        "lifecycle": "active"
+      },
+      "package_options": ["Module"],
+      "typical_use_cases": ["无线控制板", "IoT 节点"],
+      "constraints": {
+        "notes": ["模组形态，不适合对射频认证不接受的极简 BOM 场景"]
+      },
+      "priority_tags": ["联网", "Wi-Fi", "蓝牙", "快速开发"]
+    }
+  ]
+}

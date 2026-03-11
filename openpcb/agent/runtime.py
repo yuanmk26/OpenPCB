@@ -122,6 +122,7 @@ class AgentRuntime:
         architecture_stage_status = context.state.get("architecture_stage_status")
         architecture_brief_template_id = context.state.get("architecture_brief_template_id")
         architecture_brief_template_version = context.state.get("architecture_brief_template_version")
+        component_recommendations = context.state.get("component_recommendations")
         return ToolResult(
             ok=True,
             data={
@@ -135,6 +136,7 @@ class AgentRuntime:
                     "architecture_stage_status": architecture_stage_status,
                     "architecture_brief_template_id": architecture_brief_template_id,
                     "architecture_brief_template_version": architecture_brief_template_version,
+                    "component_recommendations": component_recommendations,
                 }
             },
             message="intent_parsed",
@@ -151,6 +153,7 @@ class AgentRuntime:
         architecture_stage_status = intent_payload.get("architecture_stage_status")
         architecture_brief_template_id = intent_payload.get("architecture_brief_template_id")
         architecture_brief_template_version = intent_payload.get("architecture_brief_template_version")
+        component_recommendations = intent_payload.get("component_recommendations")
         project_name = str(context.options.get("project_name", "openpcb_project"))
         settings = load_agent_settings(
             config_path=context.options.get("config_path"),
@@ -183,6 +186,8 @@ class AgentRuntime:
             spec.metadata["architecture_brief_template_id"] = architecture_brief_template_id
         if architecture_brief_template_version:
             spec.metadata["architecture_brief_template_version"] = architecture_brief_template_version
+        if component_recommendations:
+            spec.metadata["component_recommendations"] = component_recommendations
         return ToolResult(
             ok=True,
             data={"project": spec.model_dump(), "llm_meta": llm_meta},

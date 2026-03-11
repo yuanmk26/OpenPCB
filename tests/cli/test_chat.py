@@ -253,3 +253,110 @@ def test_chat_brief_option_and_custom_input_flow() -> None:
         assert "4) 自定义输入" in result.stdout
         assert "P0 字段已满足，可输入 /yes 开始规划。" in result.stdout
         assert (Path("demo") / "project.json").exists()
+
+
+def test_chat_component_recommendation_for_mcu_persists_metadata() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "我想设计一个STM32核心板\n"
+            "/yes\n"
+            "1\n"
+            "2\n"
+            "3\n"
+            "1\n"
+            "4\n"
+            "85x60mm 四层板\n"
+            "2\n"
+            "帮我推荐一个主控芯片\n"
+            "3\n"
+            "2\n"
+            "2\n"
+            "3\n"
+            "1\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "已进入 mcu 模块的器件推荐流程。" in result.stdout
+        assert "已找到候选器件：" in result.stdout
+        assert "已确认推荐器件：" in result.stdout
+        project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
+        recommendations = project.get("metadata", {}).get("component_recommendations", {})
+        assert recommendations.get("mcu", {}).get("selected_part") == "STM32F407VET6"
+
+
+def test_chat_component_recommendation_for_power_persists_metadata() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "我想设计一个STM32核心板\n"
+            "/yes\n"
+            "1\n"
+            "2\n"
+            "3\n"
+            "1\n"
+            "4\n"
+            "85x60mm 四层板\n"
+            "2\n"
+            "我还需要一个 12V 转 5V 的电源模块\n"
+            "2\n"
+            "2\n"
+            "3\n"
+            "2\n"
+            "1\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "已进入 power 模块的器件推荐流程。" in result.stdout
+        project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
+        recommendations = project.get("metadata", {}).get("component_recommendations", {})
+        assert recommendations.get("power", {}).get("selected_part") == "TPS54331"
+
+
+def test_chat_component_recommendation_for_transceiver_persists_metadata() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "我想设计一个STM32核心板\n"
+            "/yes\n"
+            "1\n"
+            "2\n"
+            "3\n"
+            "1\n"
+            "4\n"
+            "85x60mm 四层板\n"
+            "2\n"
+            "我需要一个 CAN 收发器\n"
+            "1\n"
+            "1\n"
+            "1\n"
+            "3\n"
+            "1\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "已进入 transceiver 模块的器件推荐流程。" in result.stdout
+        project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
+        recommendations = project.get("metadata", {}).get("component_recommendations", {})
+        assert recommendations.get("transceiver", {}).get("selected_part") == "SN65HVD230"
