@@ -13,6 +13,7 @@ from openpcb.agent.classifier import RequirementClassifier
 from openpcb.agent.llm.types import LLMError
 from openpcb.agent.models import AgentTaskType
 from openpcb.agent.runtime import AgentRuntime
+from openpcb.agent.schema_question_generator import SchemaAnswerMapper, SchemaQuestionGenerator
 from openpcb.agent.session import ChatSession, PendingAction, parse_repl_input
 from openpcb.cli.presenter import (
     build_result_summary,
@@ -114,10 +115,103 @@ def _brief_missing_labels(session: ChatSession) -> str:
     return "、".join(labels)
 
 
-def _show_question(item: QuestionItem, index: int, total: int) -> None:
-    typer.echo(f"问题 {index}/{total} [{item.priority}]：{item.question}")
+def _show_question(question_text: str, item: QuestionItem, index: int, total: int) -> None:
+    typer.echo(f"问题 {index}/{total} [{item.priority}]：{question_text}")
     opts = item.options
     typer.echo(f"1) {opts[0]}  2) {opts[1]}  3) {opts[2]}  4) 自定义输入")
+
+
+def _resolve_schema_question_text(
+    session: ChatSession,
+    *,
+    collector: ArchitectureSchemaCollector,
+    board_class: str,
+    board_family: str,
+    item: QuestionItem,
+    config: Path,
+    provider: str | None,
+    model: str | None,
+) -> str:
+    key = f"{session.brief_template_id}|{item.key}|{board_class}|{board_family}|{len(session.architecture_brief)}"
+    cached = session.brief_question_cache.get(key)
+    if cached:
+        return cached
+
+    try:
+        settings = load_agent_settings(
+            config_path=config,
+            overrides={
+                "provider": provider,
+                "model": model,
+                "use_mock_planner": False,
+            },
+        )
+        generator = SchemaQuestionGenerator()
+        confirmed_fields = {
+            k: v
+            for k, v in session.architecture_brief.items()
+            if session.architecture_brief_sources.get(k) == "user_confirmed"
+        }
+        inferred_fields = {
+            k: v
+            for k, v in session.architecture_brief.items()
+            if session.architecture_brief_sources.get(k) == "system_inferred"
+        }
+        text = generator.generate(
+            settings=settings,
+            board_class=board_class,
+            board_family=board_family,
+            field_key=item.key,
+            field_label=item.label,
+            question_seed=item.question_seed,
+            options=item.options,
+            missing_fields=[str(x) for x in (session.architecture_stage_status or {}).get("missing_fields", [])],
+            confirmed_fields=confirmed_fields,
+            inferred_fields=inferred_fields,
+        )
+        session.brief_question_cache[key] = text
+        return text
+    except Exception:
+        return item.question_seed
+
+
+def _normalize_schema_answer_text(
+    *,
+    payload: str,
+    item: QuestionItem,
+    collector: ArchitectureSchemaCollector,
+    board_class: str,
+    config: Path,
+    provider: str | None,
+    model: str | None,
+) -> str:
+    # Rule-first: use raw text when long enough.
+    text = payload.strip()
+    spec = next((s for s in collector.specs_for(board_class) if s.key == item.key), None)
+    if spec is None:
+        return text
+    min_length = int((spec.validation or {}).get("min_length", 2))
+    if len(text) >= min_length:
+        return text
+
+    # LLM fallback for short/noisy text.
+    settings = load_agent_settings(
+        config_path=config,
+        overrides={
+            "provider": provider,
+            "model": model,
+            "use_mock_planner": False,
+        },
+    )
+    mapper = SchemaAnswerMapper()
+    return mapper.map_text(
+        settings=settings,
+        field_key=item.key,
+        field_label=item.label,
+        user_text=payload,
+        options=item.options,
+        custom_hint=spec.custom_hint,
+    )
 
 
 def _show_round_report(
@@ -162,6 +256,10 @@ def _show_round_report(
 def _start_brief_collection(
     session: ChatSession,
     classification: dict[str, str | float | bool],
+    *,
+    config: Path,
+    provider: str | None,
+    model: str | None,
 ) -> None:
     collector = ArchitectureSchemaCollector()
     board_class = str(classification.get("board_class", "generic"))
@@ -194,9 +292,9 @@ def _start_brief_collection(
     session.brief_pending_field = result.active_field
     session.brief_field_options = result.active_options
     session.brief_expect_custom_input = False
-    session.brief_template_id = f"schema-{board_class}-v1"
-    session.brief_template_version = "v1"
-    session.brief_completed = bool(result.stage_status.get("schematic_ready", False))
+    session.brief_template_id = result.template_id
+    session.brief_template_version = result.template_version
+    session.brief_completed = bool(result.stage_status.get("architecture_ready", False))
 
     flow_stage = BRIEF_STAGE_READY if session.brief_completed else BRIEF_STAGE_COLLECTING
     pending = PendingAction(
@@ -207,8 +305,8 @@ def _start_brief_collection(
         metadata={
             "classification": classification,
             "flow_stage": flow_stage,
-            "architecture_brief_template_id": session.brief_template_id,
-            "architecture_brief_template_version": session.brief_template_version,
+            "architecture_brief_template_id": result.template_id,
+            "architecture_brief_template_version": result.template_version,
             "architecture_stage_status": result.stage_status,
         },
     )
@@ -218,15 +316,32 @@ def _start_brief_collection(
     _show_round_report(session, board_class=board_class, collector=collector, next_questions=result.next_questions)
 
     if session.brief_completed:
-        typer.echo("P0 与关键 P1 字段已满足，可输入 /yes 开始规划。")
+        typer.echo("P0 字段已满足，可输入 /yes 开始规划。")
         return
 
     if result.next_questions:
-        typer.echo("按 schema 缺口继续补全（每轮最多 3 个问题，当前先回答第一个）。")
-        _show_question(result.next_questions[0], 1, len(result.next_questions))
+        item = result.next_questions[0]
+        question_text = _resolve_schema_question_text(
+            session,
+            collector=collector,
+            board_class=board_class,
+            board_family=board_family,
+            item=item,
+            config=config,
+            provider=provider,
+            model=model,
+        )
+        _show_question(question_text, item, 1, len(result.next_questions))
 
 
-def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
+def _handle_brief_answer(
+    session: ChatSession,
+    payload: str,
+    *,
+    config: Path,
+    provider: str | None,
+    model: str | None,
+) -> bool:
     if session.pending_action is None:
         return False
     if _pending_stage(session) != BRIEF_STAGE_COLLECTING:
@@ -240,10 +355,35 @@ def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
     board_class = str(classification.get("board_class", "generic"))
     board_family = str(classification.get("board_family", "generic"))
 
+    normalized_payload = payload
+    if payload.strip() not in {"1", "2", "3", "4"} and session.brief_pending_field:
+        item: QuestionItem | None = None
+        if session.brief_pending_field and session.brief_field_options:
+            item = QuestionItem(
+                key=session.brief_pending_field,
+                label=collector.label_for(board_class, session.brief_pending_field),
+                priority="P0",
+                question_seed="",
+                options=session.brief_field_options,
+            )
+        if item is not None:
+            try:
+                normalized_payload = _normalize_schema_answer_text(
+                    payload=payload,
+                    item=item,
+                    collector=collector,
+                    board_class=board_class,
+                    config=config,
+                    provider=provider,
+                    model=model,
+                )
+            except Exception:
+                normalized_payload = payload
+
     result = collector.collect(
         board_class=board_class,
         board_family=board_family,
-        user_text=payload,
+        user_text=normalized_payload,
         values=session.architecture_brief,
         sources=session.architecture_brief_sources,
         pending_field=session.brief_pending_field,
@@ -256,9 +396,11 @@ def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
     session.architecture_stage_status = result.stage_status
     session.brief_pending_field = result.active_field
     session.brief_field_options = result.active_options
-    session.brief_completed = bool(result.stage_status.get("schematic_ready", False))
+    session.brief_completed = bool(result.stage_status.get("architecture_ready", False))
     session.pending_action.metadata["architecture_stage_status"] = result.stage_status
     session.pending_action.metadata["architecture_brief_sources"] = result.updated_sources
+    session.pending_action.metadata["architecture_brief_template_id"] = result.template_id
+    session.pending_action.metadata["architecture_brief_template_version"] = result.template_version
 
     if payload.strip() == "4":
         session.brief_expect_custom_input = True
@@ -272,6 +414,7 @@ def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
         {
             "field": result.answered_field,
             "value": payload.strip(),
+            "normalized_value": normalized_payload.strip(),
             "retry_reason": result.retry_reason,
             "stage_status": result.stage_status,
         },
@@ -288,11 +431,22 @@ def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
     if session.brief_completed:
         session.pending_action.metadata["flow_stage"] = BRIEF_STAGE_READY
         session.pending_action.requires_confirmation = True
-        typer.echo("P0 与关键 P1 字段已满足，可输入 /yes 开始规划。")
+        typer.echo("P0 字段已满足，可输入 /yes 开始规划。")
         return True
 
     if result.next_questions:
-        _show_question(result.next_questions[0], 1, len(result.next_questions))
+        item = result.next_questions[0]
+        question_text = _resolve_schema_question_text(
+            session,
+            collector=collector,
+            board_class=board_class,
+            board_family=board_family,
+            item=item,
+            config=config,
+            provider=provider,
+            model=model,
+        )
+        _show_question(question_text, item, 1, len(result.next_questions))
 
     return True
 
@@ -494,21 +648,38 @@ def command(
                     typer.echo("分类信息异常，请重新描述需求。", err=True)
                     session.clear_pending_action()
                     continue
-                _start_brief_collection(session, classification_payload)
+                _start_brief_collection(
+                    session,
+                    classification_payload,
+                    config=config,
+                    provider=provider,
+                    model=model,
+                )
                 continue
 
             if stage == BRIEF_STAGE_COLLECTING:
                 missing_labels = _brief_missing_labels(session)
                 typer.echo(f"还不能开始规划，仍缺少阻塞字段：{missing_labels}。")
                 if session.brief_pending_field and session.brief_field_options:
+                    collector, board_class, board_family = _collector_and_classification(session)
                     item = QuestionItem(
                         key=session.brief_pending_field,
-                        label=session.brief_pending_field,
+                        label=collector.label_for(board_class, session.brief_pending_field),
                         priority="P0",
-                        question=f"请先补充字段：{session.brief_pending_field}",
+                        question_seed=f"请先补充字段：{session.brief_pending_field}",
                         options=session.brief_field_options,
                     )
-                    _show_question(item, 1, 1)
+                    question_text = _resolve_schema_question_text(
+                        session,
+                        collector=collector,
+                        board_class=board_class,
+                        board_family=board_family,
+                        item=item,
+                        config=config,
+                        provider=provider,
+                        model=model,
+                    )
+                    _show_question(question_text, item, 1, 1)
                 continue
 
             if stage == BRIEF_STAGE_READY and not session.brief_completed:
@@ -613,7 +784,7 @@ def command(
             continue
 
         if action == "text":
-            if _handle_brief_answer(session, payload):
+            if _handle_brief_answer(session, payload, config=config, provider=provider, model=model):
                 continue
 
             stage = _pending_stage(session)

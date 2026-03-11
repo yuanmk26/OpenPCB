@@ -1,0 +1,111 @@
+﻿{
+  "template_id": "architecture_fields_mcu_core",
+  "version": "v1",
+  "required_fields": [
+    "board_type",
+    "use_case",
+    "main_controller_type",
+    "main_controller_part",
+    "power.input_sources",
+    "interfaces",
+    "clock",
+    "reset_boot",
+    "assembly_mode",
+    "reference_design_available"
+  ],
+  "fields": [
+    {
+      "key": "board_type",
+      "label": "板卡类型",
+      "priority": "P0",
+      "question_seed": "请确认这块板卡的类型。",
+      "options": ["MCU 核心板", "MCU 最小系统板", "MCU 控制主板"],
+      "custom_hint": "请明确板卡定位，例如“STM32 控制核心板”。",
+      "validation": {"min_length": 2}
+    },
+    {
+      "key": "use_case",
+      "label": "使用场景",
+      "priority": "P0",
+      "question_seed": "这块板主要用于什么场景？",
+      "options": ["通用控制", "电机/运动控制", "采集与通信"],
+      "custom_hint": "请描述核心业务场景，例如“机器人底盘控制”。",
+      "validation": {"min_length": 2}
+    },
+    {
+      "key": "main_controller_type",
+      "label": "主控系列",
+      "priority": "P0",
+      "question_seed": "主控系列希望选哪一类？",
+      "options": ["STM32", "ESP32", "NXP LPC"],
+      "custom_hint": "请填写主控系列名称，例如“STM32”。",
+      "validation": {"min_length": 2}
+    },
+    {
+      "key": "main_controller_part",
+      "label": "主控型号",
+      "priority": "P0",
+      "question_seed": "主控的具体型号是什么？",
+      "options": ["STM32F103", "STM32F407", "STM32H743"],
+      "custom_hint": "请填写完整型号，例如“STM32F103C8T6”。",
+      "validation": {"min_length": 3}
+    },
+    {
+      "key": "power.input_sources",
+      "label": "输入电源",
+      "priority": "P0",
+      "question_seed": "这块板输入电源来源是什么？",
+      "options": ["USB 5V", "12V 适配器", "电池供电"],
+      "custom_hint": "请说明电压与来源，例如“USB 5V + 12V 适配器”。",
+      "validation": {"min_length": 2}
+    },
+    {
+      "key": "interfaces",
+      "label": "关键接口",
+      "priority": "P0",
+      "question_seed": "请确认需要的关键接口。",
+      "options": ["USB + UART", "CAN + UART", "SPI + I2C"],
+      "custom_hint": "请列出接口组合，例如“USB, UART, CAN, I2C”。",
+      "validation": {"min_length": 2}
+    },
+    {
+      "key": "clock",
+      "label": "时钟方案",
+      "priority": "P1",
+      "key_p1": true,
+      "question_seed": "时钟方案希望怎么配置？",
+      "options": ["外部 8MHz 晶振", "内部 RC", "外部有源时钟"],
+      "custom_hint": "请描述时钟来源和频率配置。",
+      "validation": {"min_length": 2}
+    },
+    {
+      "key": "reset_boot",
+      "label": "复位与启动",
+      "priority": "P1",
+      "key_p1": true,
+      "question_seed": "复位与启动电路希望采用哪种方式？",
+      "options": ["独立 RESET + BOOT0", "仅 RESET", "自动下载电路"],
+      "custom_hint": "请描述 Reset/Boot 电路策略。",
+      "validation": {"min_length": 2}
+    },
+    {
+      "key": "assembly_mode",
+      "label": "装配方式",
+      "priority": "P1",
+      "key_p1": true,
+      "question_seed": "装配方式有什么偏好？",
+      "options": ["SMT 贴片", "DIP 直插", "混合装配"],
+      "custom_hint": "请描述制造装配方式。",
+      "validation": {"min_length": 2}
+    },
+    {
+      "key": "reference_design_available",
+      "label": "参考设计",
+      "priority": "P2",
+      "question_seed": "是否有可复用的参考设计？",
+      "options": ["有官方参考设计", "有历史项目可复用", "暂无参考设计"],
+      "custom_hint": "请说明参考来源，例如“STM32 Nucleo 原理图”。",
+      "validation": {"min_length": 2}
+    }
+  ]
+}
