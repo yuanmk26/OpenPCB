@@ -119,7 +119,7 @@ def test_chat_requirement_text_requires_confirmation_before_plan() -> None:
         )
         assert result.exit_code == 0
         assert "已识别需求：单片机核心板（STM32）" in result.stdout
-        assert "是否进入架构信息补全？输入 /yes 继续，输入 /no 取消。" in result.stdout
+        assert "将进入结构化补全（schema 缺口驱动）。输入 /yes 继续，/no 取消。" in result.stdout
         assert not (Path("demo") / "project.json").exists()
 
 
@@ -139,8 +139,8 @@ def test_chat_requirement_text_yes_enters_brief_collection() -> None:
         )
         assert result.exit_code == 0
         assert "已识别需求：单片机核心板（STM32）" in result.stdout
-        assert "先补全架构信息，再进入规划流程。" in result.stdout
-        assert "问题 1/6：" in result.stdout
+        assert "current understanding:" in result.stdout
+        assert "问题 1/1 [P0]：" in result.stdout
         assert "4) 自定义输入" in result.stdout
         assert not (Path("demo") / "project.json").exists()
 
@@ -162,8 +162,8 @@ def test_chat_brief_gate_blocks_plan_until_complete() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "还不能开始规划，仍缺少：" in result.stdout
-        assert "问题 2/6：" in result.stdout
+        assert "还不能开始规划，仍缺少阻塞字段：" in result.stdout
+        assert "问题 1/1 [P0]：" in result.stdout
         assert not (Path("demo") / "project.json").exists()
 
 
@@ -189,7 +189,7 @@ def test_chat_requirement_text_brief_complete_then_yes_runs_plan() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "架构信息已补全，可输入 /yes 开始规划。" in result.stdout
+        assert "P0 字段已满足，可输入 /yes 开始规划。" in result.stdout
         assert "已完成：`plan`。" in result.stdout
         assert (Path("demo") / "project.json").exists()
         project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
@@ -197,14 +197,14 @@ def test_chat_requirement_text_brief_complete_then_yes_runs_plan() -> None:
         brief = project.get("metadata", {}).get("architecture_brief", {})
         assert classification.get("board_class") == "mcu_core"
         assert classification.get("board_family") == "stm32"
-        assert project.get("metadata", {}).get("architecture_brief_template_id") == "architecture_brief_mcu_core"
+        assert project.get("metadata", {}).get("architecture_brief_template_id") == "architecture_fields_mcu_core"
         assert project.get("metadata", {}).get("architecture_brief_template_version") == "v1"
-        assert brief.get("board_goal")
-        assert brief.get("power_input")
-        assert brief.get("key_interfaces")
-        assert brief.get("performance_constraints")
-        assert brief.get("size_constraints")
-        assert brief.get("cost_priority")
+        assert brief.get("board_type")
+        assert brief.get("use_case")
+        assert brief.get("main_controller_type")
+        assert brief.get("main_controller_part")
+        assert brief.get("power.input_sources")
+        assert brief.get("interfaces")
 
 
 def test_chat_requirement_text_no_cancels_during_brief() -> None:
@@ -250,6 +250,6 @@ def test_chat_brief_option_and_custom_input_flow() -> None:
             input=user_input,
         )
         assert result.exit_code == 0
-        assert "已选择自定义，请输入你的具体内容。" in result.stdout
-        assert "架构信息已补全，可输入 /yes 开始规划。" in result.stdout
+        assert "4) 自定义输入" in result.stdout
+        assert "P0 字段已满足，可输入 /yes 开始规划。" in result.stdout
         assert (Path("demo") / "project.json").exists()
