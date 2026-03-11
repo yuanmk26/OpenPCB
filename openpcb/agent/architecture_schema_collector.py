@@ -19,9 +19,13 @@ class FieldSpec:
     key: str
     label: str
     priority: FieldPriority
-    question_seed: str
+    prompt_hint: str
     options: list[str]
     custom_hint: str
+    group_key: str | None = None
+    group_label: str | None = None
+    description: str = ""
+    examples: list[str] | None = None
     key_p1: bool = False
     validation: dict[str, Any] | None = None
 
@@ -31,7 +35,7 @@ class QuestionItem:
     key: str
     label: str
     priority: FieldPriority
-    question_seed: str
+    prompt_hint: str
     options: list[str]
 
 
@@ -85,29 +89,47 @@ class TemplateLoader:
         return template
 
     def _validate_template(self, data: dict[str, Any], path: Path) -> dict[str, Any]:
-        for key in ("template_id", "version", "required_fields", "fields"):
+        for key in ("template_id", "version", "required_fields"):
             if key not in data:
                 raise InputError(f"Template missing key '{key}': {path}")
 
         required_fields = data["required_fields"]
-        fields = data["fields"]
         if not isinstance(required_fields, list) or not required_fields:
             raise InputError(f"Template required_fields must be a non-empty list: {path}")
-        if not isinstance(fields, list) or not fields:
-            raise InputError(f"Template fields must be a non-empty list: {path}")
+
+        raw_fields = data.get("fields")
+        raw_groups = data.get("field_groups")
+        if raw_fields is None and raw_groups is None:
+            raise InputError(f"Template must define either 'fields' or 'field_groups': {path}")
 
         field_map: dict[str, dict[str, Any]] = {}
-        for item in fields:
-            if not isinstance(item, dict):
-                raise InputError(f"Template field entry must be object: {path}")
-            for key in ("key", "label", "priority", "question_seed", "options", "custom_hint"):
-                if key not in item:
-                    raise InputError(f"Field definition missing '{key}' in {path}")
-            if item["priority"] not in {"P0", "P1", "P2"}:
-                raise InputError(f"Field priority must be P0/P1/P2, got '{item['priority']}' in {path}")
-            if not isinstance(item["options"], list) or len(item["options"]) != 3:
-                raise InputError(f"Field options must contain exactly 3 items in {path}")
-            field_map[str(item["key"])] = item
+        if raw_fields is not None:
+            if not isinstance(raw_fields, list) or not raw_fields:
+                raise InputError(f"Template fields must be a non-empty list: {path}")
+            for item in raw_fields:
+                normalized = self._validate_field(item=item, path=path)
+                field_map[str(normalized["key"])] = normalized
+
+        if raw_groups is not None:
+            if not isinstance(raw_groups, list) or not raw_groups:
+                raise InputError(f"Template field_groups must be a non-empty list: {path}")
+            for group in raw_groups:
+                if not isinstance(group, dict):
+                    raise InputError(f"Template field group entry must be object: {path}")
+                for key in ("key", "label", "fields"):
+                    if key not in group:
+                        raise InputError(f"Field group missing '{key}' in {path}")
+                group_fields = group["fields"]
+                if not isinstance(group_fields, list) or not group_fields:
+                    raise InputError(f"Field group 'fields' must be a non-empty list in {path}")
+                for item in group_fields:
+                    normalized = self._validate_field(
+                        item=item,
+                        path=path,
+                        group_key=str(group["key"]),
+                        group_label=str(group["label"]),
+                    )
+                    field_map[str(normalized["key"])] = normalized
 
         for key in required_fields:
             if key not in field_map:
@@ -119,6 +141,42 @@ class TemplateLoader:
             "required_fields": [str(x) for x in required_fields],
             "field_map": field_map,
         }
+
+    def _validate_field(
+        self,
+        *,
+        item: dict[str, Any],
+        path: Path,
+        group_key: str | None = None,
+        group_label: str | None = None,
+    ) -> dict[str, Any]:
+        if not isinstance(item, dict):
+            raise InputError(f"Template field entry must be object: {path}")
+        for key in ("key", "label", "priority", "options", "custom_hint"):
+            if key not in item:
+                raise InputError(f"Field definition missing '{key}' in {path}")
+        if item["priority"] not in {"P0", "P1", "P2"}:
+            raise InputError(f"Field priority must be P0/P1/P2, got '{item['priority']}' in {path}")
+        if not isinstance(item["options"], list) or len(item["options"]) != 3:
+            raise InputError(f"Field options must contain exactly 3 items in {path}")
+
+        description = str(item.get("description", "")).strip()
+        prompt_hint = str(item.get("prompt_hint") or item.get("question_seed") or "").strip()
+        if not prompt_hint:
+            prompt_hint = self._default_prompt_hint(label=str(item["label"]), description=description)
+
+        normalized = dict(item)
+        normalized["prompt_hint"] = prompt_hint
+        normalized["description"] = description
+        normalized["examples"] = [str(x) for x in item.get("examples", [])]
+        normalized["group_key"] = group_key
+        normalized["group_label"] = group_label
+        return normalized
+
+    def _default_prompt_hint(self, *, label: str, description: str) -> str:
+        if description:
+            return f"请补充{label}。重点：{description}"
+        return f"请补充{label}。"
 
 
 class ArchitectureSchemaCollector:
@@ -138,9 +196,13 @@ class ArchitectureSchemaCollector:
                     key=key,
                     label=str(item["label"]),
                     priority=item["priority"],
-                    question_seed=str(item["question_seed"]),
+                    prompt_hint=str(item["prompt_hint"]),
                     options=[str(x) for x in item["options"]],
                     custom_hint=str(item["custom_hint"]),
+                    group_key=item.get("group_key"),
+                    group_label=item.get("group_label"),
+                    description=str(item.get("description", "")),
+                    examples=[str(x) for x in item.get("examples", [])],
                     key_p1=bool(item.get("key_p1", False)),
                     validation=item.get("validation", {}),
                 )
@@ -266,7 +328,7 @@ class ArchitectureSchemaCollector:
                 key=missing_specs[0].key,
                 label=missing_specs[0].label,
                 priority=missing_specs[0].priority,
-                question_seed=missing_specs[0].question_seed,
+                prompt_hint=missing_specs[0].prompt_hint,
                 options=missing_specs[0].options,
             )
         ] if missing_specs else []

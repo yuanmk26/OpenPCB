@@ -163,7 +163,7 @@ def _resolve_schema_question_text(
             board_family=board_family,
             field_key=item.key,
             field_label=item.label,
-            question_seed=item.question_seed,
+            prompt_hint=item.prompt_hint,
             options=item.options,
             missing_fields=[str(x) for x in (session.architecture_stage_status or {}).get("missing_fields", [])],
             confirmed_fields=confirmed_fields,
@@ -172,7 +172,7 @@ def _resolve_schema_question_text(
         session.brief_question_cache[key] = text
         return text
     except Exception:
-        return item.question_seed
+        return item.prompt_hint
 
 
 def _normalize_schema_answer_text(
@@ -363,7 +363,7 @@ def _handle_brief_answer(
                 key=session.brief_pending_field,
                 label=collector.label_for(board_class, session.brief_pending_field),
                 priority="P0",
-                question_seed="",
+                prompt_hint="",
                 options=session.brief_field_options,
             )
         if item is not None:
@@ -666,7 +666,7 @@ def command(
                         key=session.brief_pending_field,
                         label=collector.label_for(board_class, session.brief_pending_field),
                         priority="P0",
-                        question_seed=f"请先补充字段：{session.brief_pending_field}",
+                        prompt_hint=f"请先补充字段：{session.brief_pending_field}",
                         options=session.brief_field_options,
                     )
                     question_text = _resolve_schema_question_text(

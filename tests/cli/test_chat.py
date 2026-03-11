@@ -198,7 +198,7 @@ def test_chat_requirement_text_brief_complete_then_yes_runs_plan() -> None:
         assert classification.get("board_class") == "mcu_core"
         assert classification.get("board_family") == "stm32"
         assert project.get("metadata", {}).get("architecture_brief_template_id") == "architecture_fields_mcu_core"
-        assert project.get("metadata", {}).get("architecture_brief_template_version") == "v1"
+        assert project.get("metadata", {}).get("architecture_brief_template_version") == "v2"
         assert brief.get("board_type")
         assert brief.get("use_case")
         assert brief.get("main_controller_type")

@@ -6,6 +6,8 @@ def test_template_load_and_fallback() -> None:
     specs = collector.specs_for("mcu_core")
     assert specs
     assert any(s.key == "main_controller_part" for s in specs)
+    assert any(s.group_key == "controller_selection" for s in specs if s.key == "main_controller_part")
+    assert any("主控芯片的完整料号" in s.prompt_hint for s in specs if s.key == "main_controller_part")
 
     fallback_specs = collector.specs_for("sensor_io")
     assert fallback_specs

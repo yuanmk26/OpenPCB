@@ -2,7 +2,7 @@
 Board family: {board_family}
 Current field key: {field_key}
 Current field label: {field_label}
-Question seed: {question_seed}
+Prompt hint: {prompt_hint}
 Available options: {options}
 Missing fields: {missing_fields}
 Confirmed fields: {confirmed_fields}
