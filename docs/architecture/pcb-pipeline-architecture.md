@@ -1,4 +1,4 @@
-﻿# OpenPCB PCB 主链路架构（IR -> Build -> Export）
+# OpenPCB PCB 主链路架构（IR -> Build -> Export）
 
 ## 背景
 
@@ -16,7 +16,7 @@
 - Intent Parser：`已实现`（关键词解析）
 - IR Schema：`已实现`（`ProjectSpec/ModuleSpec/NetSpec/Component`）
 - Planner：`已实现`（规则 + LLM，输出 `ProjectSpec`）
-- Builder：`已实现`（mock 导出写盘）
+- Builder：`已实现（基础）`（mock 导出写盘）
 - Exporter：`未开始`（尚未从 builder 独立成模块）
 - Checker：`进行中`（基础规则，非完整引擎）
 
@@ -33,16 +33,21 @@
 
 ## 与对话系统的衔接
 
-实现状态：`进行中`
+实现状态：`已实现（v1）`
 
 ### 当前边界（已落地）
-- 对话入口已具备前置门禁：
+- 对话入口前置门禁：
   - `RequirementClassifier` 完成板卡类别识别
-  - `ArchitectureBriefCollector` 完成 6 项架构信息补全
-  - 信息补全前不允许进入 `plan`
-- 规划执行时会把对话层信息注入到 `project.metadata`：
+  - `ArchitectureSchemaCollector` 按模板字段缺口驱动单题补全
+  - `SchemaQuestionGenerator` 负责问题文案动态生成（失败回退模板 `question_seed`）
+  - 未达到 `architecture_ready` 前不允许进入 `plan`
+- 规划执行时注入 `project.metadata`：
   - `classification`
   - `architecture_brief`
+  - `architecture_brief_sources`
+  - `architecture_stage_status`
+  - `architecture_brief_template_id`
+  - `architecture_brief_template_version`
 
 ### 建议边界（目标）
 - 对话阶段输出两类结果：
@@ -63,12 +68,13 @@
 - 归一化后的任务输入
 - `project_dir` 或 `project.json`（如需要）
 - `classification`（board_class/board_family）
-- `architecture_brief`（架构必填项集合）
+- `architecture_brief`（架构字段值）
+- `architecture_stage_status`（readiness 与缺口）
 
 ### 设计原则
 - PCB 流水线不直接消费原始聊天日志
 - Chat Agent 如需传递上下文，应先归一化为任务输入载荷
-- 流水线不直接依赖具体模式名称之外的对话行为
+- 流水线不直接依赖具体对话行为
 - 具体工具绑定由 mode policy 决定，而不是由流水线顶层决定
 
 ## 阶段职责与接口（v1）
@@ -95,7 +101,7 @@
 - 输入：`ProjectSpec`
 - 输出：`BuildBundle`
 - 接口：`build(project_spec) -> BuildBundle`
-- 状态：`未开始`（当前为直接写文件）
+- 状态：`进行中`（当前实现仍含直接写文件路径）
 
 ### 5) Exporter
 - 输入：`BuildBundle` + `target`
@@ -114,12 +120,15 @@
 ```mermaid
 flowchart TD
     subgraph Current
-        C1[Requirement] --> C2[Intent Parser]
-        C2 --> C3[Planner]
-        C3 --> C4[ProjectSpec]
-        C4 --> C5[Builder direct write]
-        C5 --> C6[KiCad/BOM/Netlist]
-        C4 --> C7[Checker]
+        C0[Classified Requirement] --> C1[Schema Gap Collection]
+        C1 --> C2[Architecture Ready?]
+        C2 -->|No| C1
+        C2 -->|Yes| C3[Intent Parser]
+        C3 --> C4[Planner]
+        C4 --> C5[ProjectSpec]
+        C5 --> C6[Builder]
+        C6 --> C7[Artifacts]
+        C5 --> C8[Checker]
     end
 
     subgraph Target
@@ -140,9 +149,9 @@ flowchart TD
 ## 失败模式
 
 ### Current
-- Intent 解析弱：关键词覆盖有限
-- Builder 直接写文件：缺中间对象导致扩展 exporter 困难
-- Checker 规则少：只能给出基础 warning/error
+- Intent 解析覆盖有限
+- Builder 与 export 尚未彻底分层
+- Checker 规则覆盖仍偏基础
 
 ### Target
 - 统一阶段输入输出校验，错误定位到具体阶段
@@ -154,13 +163,14 @@ flowchart TD
 - `tests/cli/test_check_edit.py`：check/edit 基础行为
 - `tests/agent/test_planner_json_parse.py`：planner 输出结构化校验
 - `tests/agent/test_classifier.py`：需求分类
-- `tests/agent/test_brief_collector.py`：架构信息补全门禁
-- `tests/cli/test_chat.py`：分类 -> 补全 -> plan 会话链路
+- `tests/agent/test_architecture_schema_collector.py`：模板加载、缺口驱动、readiness
+- `tests/agent/test_schema_question_generator.py`：LLM 问题生成与失败回退
+- `tests/cli/test_architecture_schema_collector_flow.py`：分类 -> schema补全 -> plan 会话链路
 
 ## 下一步
 
-1. 引入 `BuildBundle` 类型并改造 builder 返回值。
+1. 引入 `BuildBundle` 类型并统一 builder 返回。
 2. 新增 exporter 层，接管 KiCad/BOM/Netlist 写盘。
 3. 增加 IR normalizer，作为 planner 前置阶段。
 4. 对 checker 建立规则插件接口，提升覆盖深度。
-5. 把 `classification + architecture_brief` 从对话门禁演进为标准化 `WorkProposal` 输入载荷。
+5. 把对话层输出标准化到 `WorkProposal`，弱化 CLI 过程耦合。

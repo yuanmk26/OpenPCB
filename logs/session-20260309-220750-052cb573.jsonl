@@ -1,2 +1,0 @@
-{"ts": "2026-03-09T14:07:50.334982+00:00", "session_id": "20260309-220750-052cb573", "event": "session_started", "payload": {"project_dir": "E:\\projects\\3-Ai-agent\\OpenPCB"}}
-{"ts": "2026-03-09T14:07:57.001735+00:00", "session_id": "20260309-220750-052cb573", "event": "user_input", "payload": {"raw": "/status", "action": "status"}}

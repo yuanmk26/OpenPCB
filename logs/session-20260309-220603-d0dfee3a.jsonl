@@ -1,3 +1,0 @@
-{"ts": "2026-03-09T14:06:03.696506+00:00", "session_id": "20260309-220603-d0dfee3a", "event": "session_started", "payload": {"project_dir": "E:\\projects\\3-Ai-agent\\OpenPCB"}}
-{"ts": "2026-03-09T14:06:06.126452+00:00", "session_id": "20260309-220603-d0dfee3a", "event": "user_input", "payload": {"raw": "你好", "action": "text"}}
-{"ts": "2026-03-09T14:06:06.128959+00:00", "session_id": "20260309-220603-d0dfee3a", "event": "plan_result", "payload": {"ok": true, "error": null, "trace_file": "E:\\projects\\3-Ai-agent\\OpenPCB\\logs\\agent-run-20260309-220606-127456.jsonl"}}

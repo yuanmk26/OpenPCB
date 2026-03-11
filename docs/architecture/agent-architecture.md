@@ -1,56 +1,69 @@
-﻿# OpenPCB Agent Architecture (Current + Target)
+# OpenPCB Agent Architecture (Current + Target)
 
 ## Background
 
-OpenPCB Agent is responsible for conversation, intent routing, task orchestration, and execution policy.
-It should not bind PCB workflow stages directly to concrete tools too early.
+OpenPCB Agent handles conversation, intent routing, and task execution orchestration.
+Current implementation already has a conversation-first entry, and architecture collection is now unified into a schema-gap-driven path.
 
-This document defines the target architecture around:
+This document tracks architecture around:
 
-- `mode` as the current PCB work perspective
-- `action` as the stable execution verb
-- `toolchain` as a late-bound implementation detail
+- `mode` as current PCB work perspective
+- `action` as execution verb
+- `toolchain` as runtime implementation detail
 
 ## Current
 
-Implementation status: `已实现` for the basic runtime loop, `进行中` for conversation-first orchestration.
+Implementation status: conversation shell and schema gate `已实现`; mode/action/toolchain full decoupling `进行中`.
 
 ### Current layering
 
-- Conversation Orchestrator: `chat` REPL, slash commands, confirmation flow
-- Requirement Gate Layer: requirement classifier + architecture brief collector
+- Conversation Orchestrator: `chat` REPL + slash commands + confirmation
+- Requirement Gate Layer:
+  - `RequirementClassifier` (`board_class + board_family`)
+  - `ArchitectureSchemaCollector` (template-driven gap engine)
+  - `SchemaQuestionGenerator` (LLM dynamic question wording)
 - Runtime: `run(task_type, input_payload, options)`
-- Hardcoded task execution: `PLAN / BUILD / CHECK / EDIT`
+- Task execution chain: `PLAN / BUILD / CHECK / EDIT`
 - Domain adapters: parser, planner, builder, checker, executor
 
 ### Current execution model
 
-- Fixed loop: `observe -> plan_steps -> step retry -> reflect -> finalize`
-- Step chains are selected by `task_type`
-- Runtime writes trace logs to `logs/agent-run-*.jsonl`
-- For board-design text input:
-  - classify board type (`board_class + board_family`)
-  - enter architecture brief Q&A gate (6 required fields)
-  - allow `plan` only when brief is complete
+- Fixed runtime loop by `task_type`
+- Trace logs written to `logs/agent-run-*.jsonl`
+- Board-design conversation path:
+  - classify board type
+  - enter schema gap collection (single active field per round)
+  - ask user with `1/2/3/4` protocol (3 template options + custom)
+  - allow `plan` only when `architecture_ready=True`
 
 ### Current delivered capabilities
 
-- Conversation-first shell default entry
-- User-readable chat output for classification and action prompts
+- `openpcb` default enters interactive shell
 - Session mode persistence and restore (`current_mode`)
-- Pending stage metadata for conversation flow:
+- Pending flow stages:
   - `classified`
-  - `brief_collecting`
+  - `brief_collecting` (name retained for compatibility, behavior is schema-driven)
   - `ready_to_plan`
-- Metadata injection to planning output:
+- Stage status standard output:
+  - `current_stage`
+  - `architecture_ready`
+  - `schematic_ready`
+  - `layout_ready`
+  - `missing_fields`
+  - `assumptions`
+- Plan metadata injection:
   - `project.metadata.classification`
   - `project.metadata.architecture_brief`
+  - `project.metadata.architecture_brief_sources`
+  - `project.metadata.architecture_stage_status`
+  - `project.metadata.architecture_brief_template_id`
+  - `project.metadata.architecture_brief_template_version`
 
 ### Current problems
 
-- Runtime is still `task_type`-centric; no real `mode/action/toolchain` resolution yet
-- Conversation routing logic is embedded in CLI command flow, not an explicit router module
-- Brief collector is rule-based and stores raw user text; structure normalization is still missing
+- Runtime is still `task_type`-centric; mode policy is not fully extracted
+- Conversation routing logic is still embedded in `chat.py`
+- Session field names still contain historical `brief_*` prefixes
 
 ## Target
 
@@ -58,22 +71,20 @@ Implementation status: `进行中`.
 
 ### Core principle
 
-The agent should decide:
+The agent decides:
 
-1. whether the user is chatting or entering PCB work
-2. which `mode` best matches the current work perspective
-3. which `action` should be executed in that mode
-4. which toolchain should be selected by policy
+1. chat vs PCB work
+2. target `mode`
+3. target `action` in that mode
+4. policy-selected toolchain
 
-Key rule:
-
-`mode != action != tool`
+Rule: `mode != action != tool`.
 
 ### Mode
 
-`mode` represents work perspective, not a rigid workflow state.
+`mode` is work perspective, not direct tool binding.
 
-Recommended initial modes:
+Current and planned set:
 
 - `system_architecture`
 - `schematic_design`
@@ -84,9 +95,7 @@ Recommended initial modes:
 
 ### Action
 
-`action` is the stable execution verb.
-
-Recommended initial actions:
+Stable verbs:
 
 - `analyze`
 - `plan`
@@ -98,41 +107,38 @@ Recommended initial actions:
 
 ### Toolchain
 
-`toolchain` is a policy-resolved execution chain for one `(mode, action)` pair.
+Policy maps `(mode, action)` to executable chain.
 
 ## Proposed components
 
 ### 1) Conversation Router
 
-- decides chat vs PCB work
-- extracts candidate mode and action
-- decides whether clarification or confirmation is needed
+- chat vs PCB routing
+- clarification/confirmation decision
 
-### 2) Mode Router
+### 2) Schema Gap Engine
 
-- maps user text and session context to target mode
-- updates session mode when confidence is sufficient
+- load board-class template from `templates/architecture_fields/*.json`
+- rank missing fields by `P0 -> P1 -> P2`
+- expose single active question each round
 
 ### 3) Session State
 
-- stores `current_mode`
-- stores pending action and decision metadata
-- stores `architecture_brief` and completeness state
+- persist `current_mode`
+- persist pending flow metadata
+- persist architecture values/sources/stage status/template info
 
 ### 4) Action Resolver
 
-- resolves final action under current mode
-- rejects unsupported `(mode, action)` pairs
+- resolve executable action under current mode
 
 ### 5) Mode Policy
 
-- resolves `(mode, action) -> toolchain`
-- keeps tool binding outside top-level router
+- bind `(mode, action)` to toolchain
 
 ### 6) Runtime Executor
 
-- executes resolved toolchain
-- keeps retry, trace, and error handling generic
+- execute toolchain with unified trace and retry
 
 ## Target data flow
 
@@ -141,9 +147,10 @@ flowchart TD
     U[User Message] --> R[Conversation Router]
     R --> D{Chat or PCB work}
     D -->|Chat| C[Chat Agent Reply]
-    D -->|PCB work| G[Requirement Gate]
-    G --> M[Mode Router]
-    M --> S[Session State]
+    D -->|PCB work| CL[Requirement Classifier]
+    CL --> SG[Schema Gap Engine]
+    SG --> QG[LLM Question Generator]
+    QG --> S[Session State]
     S --> A[Action Resolver]
     A --> P[Mode Policy]
     P --> T[Toolchain]
@@ -157,18 +164,15 @@ Current implemented tests:
 
 - `tests/agent/test_session.py`
 - `tests/agent/test_classifier.py`
-- `tests/agent/test_brief_collector.py`
+- `tests/agent/test_architecture_schema_collector.py`
+- `tests/agent/test_schema_question_generator.py`
+- `tests/agent/test_no_legacy_brief_imports.py`
+- `tests/cli/test_architecture_schema_collector_flow.py`
 - `tests/cli/test_chat.py`
-
-Future tests should add:
-
-- explicit mode routing tests
-- unsupported `(mode, action)` rejection tests
-- policy resolution tests decoupled from CLI flow
 
 ## Next steps
 
-1. Add explicit `ModeType` enum and remove stringly-typed mode usage.
-2. Extract conversation routing from chat command into dedicated router module.
-3. Add `ModeRouter` and `ActionResolver` on top of current stage metadata.
-4. Replace runtime hardcoded `_plan_steps()` with policy-resolved toolchains.
+1. Extract router logic from `chat.py` into dedicated module.
+2. Complete `mode/action/toolchain` policy resolution in runtime.
+3. Migrate session naming from `brief_*` to `schema_*` with compatibility shim.
+4. Add stage-aware entry gates for schematic/layout handoff.
