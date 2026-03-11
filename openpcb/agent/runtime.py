@@ -118,6 +118,8 @@ class AgentRuntime:
         intent = parse_requirement(requirement)
         classification = context.state.get("classification")
         architecture_brief = context.state.get("architecture_brief")
+        architecture_brief_sources = context.state.get("architecture_brief_sources")
+        architecture_stage_status = context.state.get("architecture_stage_status")
         architecture_brief_template_id = context.state.get("architecture_brief_template_id")
         architecture_brief_template_version = context.state.get("architecture_brief_template_version")
         return ToolResult(
@@ -129,6 +131,8 @@ class AgentRuntime:
                     "modules": intent.modules,
                     "classification": classification,
                     "architecture_brief": architecture_brief,
+                    "architecture_brief_sources": architecture_brief_sources,
+                    "architecture_stage_status": architecture_stage_status,
                     "architecture_brief_template_id": architecture_brief_template_id,
                     "architecture_brief_template_version": architecture_brief_template_version,
                 }
@@ -143,6 +147,8 @@ class AgentRuntime:
         requirement = str(intent_payload.get("requirement", ""))
         classification = intent_payload.get("classification")
         architecture_brief = intent_payload.get("architecture_brief")
+        architecture_brief_sources = intent_payload.get("architecture_brief_sources")
+        architecture_stage_status = intent_payload.get("architecture_stage_status")
         architecture_brief_template_id = intent_payload.get("architecture_brief_template_id")
         architecture_brief_template_version = intent_payload.get("architecture_brief_template_version")
         project_name = str(context.options.get("project_name", "openpcb_project"))
@@ -169,6 +175,10 @@ class AgentRuntime:
             spec.metadata["classification"] = classification
         if architecture_brief:
             spec.metadata["architecture_brief"] = architecture_brief
+        if architecture_brief_sources:
+            spec.metadata["architecture_brief_sources"] = architecture_brief_sources
+        if architecture_stage_status:
+            spec.metadata["architecture_stage_status"] = architecture_stage_status
         if architecture_brief_template_id:
             spec.metadata["architecture_brief_template_id"] = architecture_brief_template_id
         if architecture_brief_template_version:

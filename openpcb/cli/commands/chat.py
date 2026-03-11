@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from pathlib import Path
+from typing import Any
 
 import typer
 
-from openpcb.agent.brief_collector import ArchitectureBriefCollector
-from openpcb.agent.brief_question_generator import BriefQuestionGenerator
+from openpcb.agent.architecture_schema_collector import ArchitectureSchemaCollector, QuestionItem
 from openpcb.agent.chat_agent import ChatAgent
 from openpcb.agent.classifier import RequirementClassifier
 from openpcb.agent.llm.types import LLMError
@@ -32,6 +30,7 @@ CLASSIFICATION_CONFIRM_THRESHOLD = 0.6
 BRIEF_STAGE_CLASSIFIED = "classified"
 BRIEF_STAGE_COLLECTING = "brief_collecting"
 BRIEF_STAGE_READY = "ready_to_plan"
+MAX_QUESTIONS_PER_ROUND = 3
 
 
 def _print_lines(lines: list[str], err: bool = False) -> None:
@@ -95,231 +94,172 @@ def _pending_stage(session: ChatSession) -> str | None:
     return stage if isinstance(stage, str) else None
 
 
-def _brief_missing_labels(session: ChatSession) -> str:
-    collector = ArchitectureBriefCollector()
+def _collector_and_classification(session: ChatSession) -> tuple[ArchitectureSchemaCollector, str, str]:
+    collector = ArchitectureSchemaCollector()
     board_class = "generic"
+    board_family = "generic"
     if session.pending_action is not None:
         classification = session.pending_action.metadata.get("classification")
         if isinstance(classification, dict):
             board_class = str(classification.get("board_class", "generic"))
-    labels = [collector.label_for(field, board_class=board_class) for field in collector.missing_fields(session.architecture_brief, board_class=board_class)]
+            board_family = str(classification.get("board_family", "generic"))
+    return collector, board_class, board_family
+
+
+def _brief_missing_labels(session: ChatSession) -> str:
+    collector, board_class, _ = _collector_and_classification(session)
+    stage_status = session.architecture_stage_status or {}
+    blocking = stage_status.get("blocking_missing_fields", [])
+    labels = [collector.label_for(board_class, key) for key in blocking if isinstance(key, str)]
     return "、".join(labels)
 
 
-def _show_brief_question(question: str, options: list[str]) -> None:
-    typer.echo(question)
-    if options:
-        typer.echo(f"1) {options[0]}  2) {options[1]}  3) {options[2]}  4) 自定义输入")
+def _show_question(item: QuestionItem, index: int, total: int) -> None:
+    typer.echo(f"问题 {index}/{total} [{item.priority}]：{item.question}")
+    opts = item.options
+    typer.echo(f"1) {opts[0]}  2) {opts[1]}  3) {opts[2]}  4) 自定义输入")
 
 
-def _brief_cache_key(
-    *,
-    template_id: str,
-    field: str,
-    brief: dict[str, str],
-    board_class: str,
-    board_family: str,
-) -> str:
-    brief_hash = hashlib.sha1(json.dumps(brief, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
-    return f"{template_id}|{field}|{board_class}|{board_family}|{brief_hash}"
-
-
-def _resolve_brief_question_text(
+def _show_round_report(
     session: ChatSession,
     *,
-    collector: ArchitectureBriefCollector,
-    classification: dict[str, str | float | bool],
-    result_question: str,
-    current_field: str,
-    options: list[str],
-    missing_fields: list[str],
-    template_id: str,
-    config: Path,
-    provider: str | None,
-    model: str | None,
-) -> str:
-    board_class = str(classification.get("board_class", "generic"))
-    board_family = str(classification.get("board_family", "generic"))
-    key = _brief_cache_key(
-        template_id=template_id,
-        field=current_field,
-        brief=session.architecture_brief,
-        board_class=board_class,
-        board_family=board_family,
-    )
-    cached = session.brief_question_cache.get(key)
-    if cached:
-        return cached
+    board_class: str,
+    collector: ArchitectureSchemaCollector,
+    next_questions: list[QuestionItem],
+) -> None:
+    specs = collector.specs_for(board_class)
+    values = session.architecture_brief
+    sources = session.architecture_brief_sources
 
-    try:
-        settings = load_agent_settings(
-            config_path=config,
-            overrides={
-                "provider": provider,
-                "model": model,
-                "use_mock_planner": False,
-            },
-        )
-        generator = BriefQuestionGenerator()
-        text = generator.generate(
-            settings=settings,
-            board_class=board_class,
-            board_family=board_family,
-            current_field=current_field,
-            field_label=collector.label_for(current_field, board_class=board_class),
-            template_question=result_question,
-            options=options,
-            filled_brief_summary=session.architecture_brief,
-            missing_fields=missing_fields,
-        )
-        session.brief_question_cache[key] = text
-        return text
-    except (InputError, LLMError, Exception):
-        return result_question
+    typer.echo("current understanding:")
+    for spec in specs:
+        source = sources.get(spec.key, "unknown")
+        if source == "unknown":
+            typer.echo(f"- {spec.key}: unknown")
+        else:
+            typer.echo(f"- {spec.key}: {values.get(spec.key, '')} ({source})")
+
+    confirmed = [spec.key for spec in specs if sources.get(spec.key) == "user_confirmed"]
+    typer.echo("confirmed fields:")
+    typer.echo(f"- {', '.join(confirmed) if confirmed else 'none'}")
+
+    assumptions = [
+        f"{spec.key}={values.get(spec.key, '')}"
+        for spec in specs
+        if sources.get(spec.key) == "system_inferred"
+    ]
+    typer.echo("assumptions:")
+    typer.echo(f"- {', '.join(assumptions) if assumptions else 'none'}")
+
+    typer.echo("remaining questions:")
+    if not next_questions:
+        typer.echo("- none")
+    else:
+        for q in next_questions[:MAX_QUESTIONS_PER_ROUND]:
+            typer.echo(f"- [{q.priority}] {q.label}")
 
 
 def _start_brief_collection(
     session: ChatSession,
     classification: dict[str, str | float | bool],
-    *,
-    config: Path,
-    provider: str | None,
-    model: str | None,
 ) -> None:
-    collector = ArchitectureBriefCollector()
+    collector = ArchitectureSchemaCollector()
+    board_class = str(classification.get("board_class", "generic"))
+    board_family = str(classification.get("board_family", "generic"))
+    requirement = str(session.pending_action.payload if session.pending_action else "")
+
+    inferred_values, inferred_sources = collector.infer(
+        requirement=requirement,
+        board_class=board_class,
+        board_family=board_family,
+        values=session.architecture_brief,
+        sources=session.architecture_brief_sources,
+    )
+
     result = collector.collect(
-        board_class=str(classification.get("board_class", "other")),
-        board_family=str(classification.get("board_family", "generic")),
+        board_class=board_class,
+        board_family=board_family,
         user_text="",
-        brief=session.architecture_brief,
+        values=inferred_values,
+        sources=inferred_sources,
         pending_field=None,
         pending_options=None,
         expect_custom_input=False,
     )
-    session.architecture_brief = result.updated_brief
-    session.brief_required_fields = collector.required_fields(str(classification.get("board_class", "generic")))
-    session.brief_template_id = result.template_id
-    session.brief_template_version = result.template_version
-    session.brief_expect_custom_input = False
-    session.brief_completed = result.is_complete
-    if result.is_complete:
-        session.brief_pending_field = None
-        session.brief_field_options = []
-        pending = PendingAction(
-            action_route=AgentTaskType.PLAN,
-            payload=str(session.pending_action.payload if session.pending_action else ""),
-            user_goal="classified_plan",
-            requires_confirmation=True,
-            metadata={
-                "classification": classification,
-                "flow_stage": BRIEF_STAGE_READY,
-                "architecture_brief_template_id": result.template_id,
-                "architecture_brief_template_version": result.template_version,
-            },
-        )
-        session.set_pending_action(pending)
-        session.log("pending_created", pending.to_dict())
-        typer.echo("架构信息已补全，可输入 /yes 开始规划。")
-        return
 
-    next_field = result.current_field or result.missing_fields[0]
-    session.brief_pending_field = next_field
-    session.brief_field_options = result.options
+    session.architecture_brief = result.updated_values
+    session.architecture_brief_sources = result.updated_sources
+    session.architecture_stage_status = result.stage_status
+    session.brief_required_fields = [s.key for s in collector.specs_for(board_class)]
+    session.brief_pending_field = result.active_field
+    session.brief_field_options = result.active_options
+    session.brief_expect_custom_input = False
+    session.brief_template_id = f"schema-{board_class}-v1"
+    session.brief_template_version = "v1"
+    session.brief_completed = bool(result.stage_status.get("schematic_ready", False))
+
+    flow_stage = BRIEF_STAGE_READY if session.brief_completed else BRIEF_STAGE_COLLECTING
     pending = PendingAction(
         action_route=AgentTaskType.PLAN,
-        payload=str(session.pending_action.payload if session.pending_action else ""),
+        payload=requirement,
         user_goal="classified_plan",
-        requires_confirmation=False,
+        requires_confirmation=session.brief_completed,
         metadata={
             "classification": classification,
-            "flow_stage": BRIEF_STAGE_COLLECTING,
-            "architecture_brief_template_id": result.template_id,
-            "architecture_brief_template_version": result.template_version,
+            "flow_stage": flow_stage,
+            "architecture_brief_template_id": session.brief_template_id,
+            "architecture_brief_template_version": session.brief_template_version,
+            "architecture_stage_status": result.stage_status,
         },
     )
     session.set_pending_action(pending)
     session.log("pending_created", pending.to_dict())
-    if result.next_question:
-        typer.echo("先补全架构信息，再进入规划流程。")
-        question_text = _resolve_brief_question_text(
-            session,
-            collector=collector,
-            classification=classification,
-            result_question=result.template_question or result.next_question,
-            current_field=next_field,
-            options=result.options,
-            missing_fields=result.missing_fields,
-            template_id=result.template_id,
-            config=config,
-            provider=provider,
-            model=model,
-        )
-        idx = len(session.brief_required_fields) - len(result.missing_fields) + 1
-        _show_brief_question(f"问题 {idx}/{len(session.brief_required_fields)}：{question_text}", result.options)
+
+    _show_round_report(session, board_class=board_class, collector=collector, next_questions=result.next_questions)
+
+    if session.brief_completed:
+        typer.echo("P0 与关键 P1 字段已满足，可输入 /yes 开始规划。")
+        return
+
+    if result.next_questions:
+        typer.echo("按 schema 缺口继续补全（每轮最多 3 个问题，当前先回答第一个）。")
+        _show_question(result.next_questions[0], 1, len(result.next_questions))
 
 
-def _handle_brief_answer(
-    session: ChatSession,
-    payload: str,
-    *,
-    config: Path,
-    provider: str | None,
-    model: str | None,
-) -> bool:
+def _handle_brief_answer(session: ChatSession, payload: str) -> bool:
     if session.pending_action is None:
         return False
-    stage = _pending_stage(session)
-    if stage != BRIEF_STAGE_COLLECTING:
+    if _pending_stage(session) != BRIEF_STAGE_COLLECTING:
         return False
+
     classification = session.pending_action.metadata.get("classification")
     if not isinstance(classification, dict):
         return False
-    if not session.brief_pending_field:
-        return False
 
-    collector = ArchitectureBriefCollector()
+    collector = ArchitectureSchemaCollector()
+    board_class = str(classification.get("board_class", "generic"))
+    board_family = str(classification.get("board_family", "generic"))
+
     result = collector.collect(
-        board_class=str(classification.get("board_class", "other")),
-        board_family=str(classification.get("board_family", "generic")),
+        board_class=board_class,
+        board_family=board_family,
         user_text=payload,
-        brief=session.architecture_brief,
+        values=session.architecture_brief,
+        sources=session.architecture_brief_sources,
         pending_field=session.brief_pending_field,
         pending_options=session.brief_field_options,
         expect_custom_input=session.brief_expect_custom_input,
     )
-    session.architecture_brief = result.updated_brief
-    session.brief_template_id = result.template_id
-    session.brief_template_version = result.template_version
-    session.log(
-        "brief_answered",
-        {
-            "field": result.answered_field,
-            "value": payload.strip(),
-            "missing_fields": result.missing_fields,
-            "retry_reason": result.retry_reason,
-        },
-    )
 
-    if result.is_complete:
-        session.brief_pending_field = None
-        session.brief_field_options = []
-        session.brief_expect_custom_input = False
-        session.brief_completed = True
-        session.pending_action.metadata["flow_stage"] = BRIEF_STAGE_READY
-        session.pending_action.requires_confirmation = True
-        session.pending_action.metadata["architecture_brief_template_id"] = result.template_id
-        session.pending_action.metadata["architecture_brief_template_version"] = result.template_version
-        session.log(
-            "brief_completed",
-            {"architecture_brief": session.architecture_brief, "missing_fields": result.missing_fields},
-        )
-        typer.echo("架构信息已补全，可输入 /yes 开始规划。")
-        return True
+    session.architecture_brief = result.updated_values
+    session.architecture_brief_sources = result.updated_sources
+    session.architecture_stage_status = result.stage_status
+    session.brief_pending_field = result.active_field
+    session.brief_field_options = result.active_options
+    session.brief_completed = bool(result.stage_status.get("schematic_ready", False))
+    session.pending_action.metadata["architecture_stage_status"] = result.stage_status
+    session.pending_action.metadata["architecture_brief_sources"] = result.updated_sources
 
-    next_field = result.current_field or result.missing_fields[0]
-    session.brief_pending_field = next_field
-    session.brief_field_options = result.options
-    session.brief_completed = False
     if payload.strip() == "4":
         session.brief_expect_custom_input = True
     elif result.retry_reason and session.brief_expect_custom_input:
@@ -327,28 +267,33 @@ def _handle_brief_answer(
     else:
         session.brief_expect_custom_input = False
 
+    session.log(
+        "brief_answered",
+        {
+            "field": result.answered_field,
+            "value": payload.strip(),
+            "retry_reason": result.retry_reason,
+            "stage_status": result.stage_status,
+        },
+    )
+
     if result.retry_reason:
         typer.echo(result.retry_reason)
         if payload.strip() == "4":
-            hint = collector.custom_hint_for(str(classification.get("board_class", "generic")), next_field)
-            typer.echo(hint)
+            typer.echo("请输入该字段的自定义内容。")
             return True
-    if result.next_question:
-        question_text = _resolve_brief_question_text(
-            session,
-            collector=collector,
-            classification=classification,
-            result_question=result.template_question or result.next_question,
-            current_field=next_field,
-            options=result.options,
-            missing_fields=result.missing_fields,
-            template_id=result.template_id,
-            config=config,
-            provider=provider,
-            model=model,
-        )
-        idx = len(session.brief_required_fields) - len(result.missing_fields) + 1
-        _show_brief_question(f"问题 {idx}/{len(session.brief_required_fields)}：{question_text}", result.options)
+
+    _show_round_report(session, board_class=board_class, collector=collector, next_questions=result.next_questions)
+
+    if session.brief_completed:
+        session.pending_action.metadata["flow_stage"] = BRIEF_STAGE_READY
+        session.pending_action.requires_confirmation = True
+        typer.echo("P0 与关键 P1 字段已满足，可输入 /yes 开始规划。")
+        return True
+
+    if result.next_questions:
+        _show_question(result.next_questions[0], 1, len(result.next_questions))
+
     return True
 
 
@@ -381,10 +326,11 @@ def _handle_classification_route(session: ChatSession, payload: str) -> bool:
     )
     session.set_pending_action(pending)
     session.log("pending_created", pending.to_dict())
+
     class_label = _board_class_label(result.board_class)
     family_label = result.board_family.upper() if result.board_family != "generic" else "通用"
     typer.echo(f"已识别需求：{class_label}（{family_label}），置信度 {result.confidence:.2f}。")
-    typer.echo("是否进入架构信息补全？输入 /yes 继续，输入 /no 取消。")
+    typer.echo("将进入结构化补全（schema 缺口驱动）。输入 /yes 继续，/no 取消。")
     return True
 
 
@@ -403,6 +349,8 @@ def _run_task(
     step_budget: int,
     classification: dict[str, str | float | bool] | None = None,
     architecture_brief: dict[str, str] | None = None,
+    architecture_brief_sources: dict[str, str] | None = None,
+    architecture_stage_status: dict[str, Any] | None = None,
     architecture_brief_template_id: str | None = None,
     architecture_brief_template_version: str | None = None,
 ) -> bool:
@@ -414,11 +362,15 @@ def _run_task(
     }
 
     if task_type == AgentTaskType.PLAN:
-        input_payload = {"requirement": payload}
+        input_payload: dict[str, Any] = {"requirement": payload}
         if classification:
             input_payload["classification"] = classification
         if architecture_brief:
             input_payload["architecture_brief"] = architecture_brief
+        if architecture_brief_sources:
+            input_payload["architecture_brief_sources"] = architecture_brief_sources
+        if architecture_stage_status:
+            input_payload["architecture_stage_status"] = architecture_stage_status
         if architecture_brief_template_id:
             input_payload["architecture_brief_template_id"] = architecture_brief_template_id
         if architecture_brief_template_version:
@@ -447,7 +399,7 @@ def _run_task(
         session.last_result_summary = {"task_type": task_type.value, "ok": False, "error": str(exc)}
         session.log("task_error", session.last_result_summary)
         return False
-    except Exception as exc:  # keep REPL alive on unexpected runtime failures
+    except Exception as exc:
         _print_lines(format_run_failure(task_type, f"Unexpected error: {exc}"), err=True)
         session.last_result_summary = {"task_type": task_type.value, "ok": False, "error": str(exc)}
         session.log("task_error", session.last_result_summary)
@@ -515,6 +467,7 @@ def command(
             session.log("chat_cleared", {})
             typer.echo("Cleared chat history and pending action.")
             continue
+
         if action == "no":
             if session.pending_action is None:
                 typer.echo("No pending action to cancel.")
@@ -526,83 +479,41 @@ def command(
                 session.log("pending_cancelled", session.pending_action.to_dict())
                 session.clear_pending_action()
             continue
+
         if action == "yes":
             if session.pending_action is None:
                 typer.echo("No pending action. Enter a request first.")
                 continue
+
             pending = session.pending_action
             stage = _pending_stage(session)
+
             if stage == BRIEF_STAGE_CLASSIFIED:
-                session.log(
-                    "pending_confirmed",
-                    {
-                        "decision": pending.user_goal,
-                        "requires_confirmation": pending.requires_confirmation,
-                        "confirmed": True,
-                        "action_route": pending.action_route.value,
-                        "metadata": pending.metadata,
-                        "reply_style": "summary_then_details",
-                    },
-                )
                 classification_payload = pending.metadata.get("classification")
                 if not isinstance(classification_payload, dict):
                     typer.echo("分类信息异常，请重新描述需求。", err=True)
                     session.clear_pending_action()
                     continue
-                _start_brief_collection(
-                    session,
-                    classification_payload,
-                    config=config,
-                    provider=provider,
-                    model=model,
-                )
+                _start_brief_collection(session, classification_payload)
                 continue
+
             if stage == BRIEF_STAGE_COLLECTING:
                 missing_labels = _brief_missing_labels(session)
-                typer.echo(f"还不能开始规划，仍缺少：{missing_labels}。")
-                if session.brief_pending_field:
-                    collector = ArchitectureBriefCollector()
-                    classification_payload = pending.metadata.get("classification")
-                    board_class = "generic"
-                    board_family = "generic"
-                    if isinstance(classification_payload, dict):
-                        board_class = str(classification_payload.get("board_class", "generic"))
-                        board_family = str(classification_payload.get("board_family", "generic"))
-                    prompt_result = collector.collect(
-                        board_class=board_class,
-                        board_family=board_family,
-                        user_text="",
-                        brief=session.architecture_brief,
-                        pending_field=session.brief_pending_field,
-                        pending_options=session.brief_field_options,
-                        expect_custom_input=False,
+                typer.echo(f"还不能开始规划，仍缺少阻塞字段：{missing_labels}。")
+                if session.brief_pending_field and session.brief_field_options:
+                    item = QuestionItem(
+                        key=session.brief_pending_field,
+                        label=session.brief_pending_field,
+                        priority="P0",
+                        question=f"请先补充字段：{session.brief_pending_field}",
+                        options=session.brief_field_options,
                     )
-                    if prompt_result.next_question:
-                        session.brief_pending_field = prompt_result.current_field
-                        session.brief_field_options = prompt_result.options
-                        session.brief_expect_custom_input = False
-                        question_text = _resolve_brief_question_text(
-                            session,
-                            collector=collector,
-                            classification=classification_payload if isinstance(classification_payload, dict) else {},
-                            result_question=prompt_result.template_question or prompt_result.next_question,
-                            current_field=str(prompt_result.current_field),
-                            options=prompt_result.options,
-                            missing_fields=prompt_result.missing_fields,
-                            template_id=prompt_result.template_id,
-                            config=config,
-                            provider=provider,
-                            model=model,
-                        )
-                        idx = len(session.brief_required_fields) - len(prompt_result.missing_fields) + 1
-                        _show_brief_question(
-                            f"问题 {idx}/{len(session.brief_required_fields)}：{question_text}",
-                            prompt_result.options,
-                        )
+                    _show_question(item, 1, 1)
                 continue
+
             if stage == BRIEF_STAGE_READY and not session.brief_completed:
                 missing_labels = _brief_missing_labels(session)
-                typer.echo(f"还不能开始规划，仍缺少：{missing_labels}。")
+                typer.echo(f"还不能开始规划，仍缺少阻塞字段：{missing_labels}。")
                 continue
 
             session.clear_pending_action()
@@ -619,6 +530,7 @@ def command(
             )
             if pending.action_route != AgentTaskType.PLAN and not _ensure_has_project(session, pending.action_route.value):
                 continue
+
             _run_task(
                 runtime,
                 session,
@@ -633,6 +545,12 @@ def command(
                 step_budget=step_budget,
                 classification=pending.metadata.get("classification"),
                 architecture_brief=session.architecture_brief if pending.action_route == AgentTaskType.PLAN else None,
+                architecture_brief_sources=(
+                    session.architecture_brief_sources if pending.action_route == AgentTaskType.PLAN else None
+                ),
+                architecture_stage_status=(
+                    session.architecture_stage_status if pending.action_route == AgentTaskType.PLAN else None
+                ),
                 architecture_brief_template_id=(
                     session.brief_template_id if pending.action_route == AgentTaskType.PLAN else None
                 ),
@@ -695,17 +613,20 @@ def command(
             continue
 
         if action == "text":
-            if _handle_brief_answer(session, payload, config=config, provider=provider, model=model):
+            if _handle_brief_answer(session, payload):
                 continue
+
             stage = _pending_stage(session)
             if stage == BRIEF_STAGE_CLASSIFIED:
-                typer.echo("请输入 /yes 进入架构信息补全，或输入 /no 取消本次需求。")
+                typer.echo("请输入 /yes 进入结构化补全，或输入 /no 取消本次需求。")
                 continue
             if stage == BRIEF_STAGE_READY:
-                typer.echo("架构信息已补全，请输入 /yes 开始规划，或输入 /no 取消。")
+                typer.echo("结构化信息已满足规划门禁，请输入 /yes 开始规划，或 /no 取消。")
                 continue
+
             if session.pending_action is None and _handle_classification_route(session, payload):
                 continue
+
             _log_decision(
                 session,
                 action_route=None,
@@ -730,11 +651,7 @@ def command(
                 continue
 
             try:
-                reply = chat_agent.reply(
-                    settings=settings,
-                    messages=session.chat_messages,
-                    user_text=payload,
-                )
+                reply = chat_agent.reply(settings=settings, messages=session.chat_messages, user_text=payload)
             except LLMError as exc:
                 msg = f"Chat request failed: {exc}"
                 typer.echo(msg, err=True)

@@ -42,6 +42,8 @@ class ChatSession:
     last_artifacts: dict[str, Any] | None = None
     pending_action: PendingAction | None = None
     architecture_brief: dict[str, str] = field(default_factory=dict)
+    architecture_brief_sources: dict[str, str] = field(default_factory=dict)
+    architecture_stage_status: dict[str, Any] = field(default_factory=dict)
     brief_required_fields: list[str] = field(default_factory=list)
     brief_pending_field: str | None = None
     brief_field_options: list[str] = field(default_factory=list)
@@ -108,6 +110,8 @@ class ChatSession:
     def clear_brief_state(self, *, keep_answers: bool = True) -> None:
         if not keep_answers:
             self.architecture_brief = {}
+            self.architecture_brief_sources = {}
+            self.architecture_stage_status = {}
         self.brief_required_fields = []
         self.brief_pending_field = None
         self.brief_field_options = []
