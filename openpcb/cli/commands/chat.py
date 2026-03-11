@@ -190,6 +190,43 @@ def _show_candidates(
     typer.echo("请输入 1/2/3 选择候选，或直接输入具体型号。")
 
 
+def _component_selection_blockers(session: ChatSession) -> list[str]:
+    blockers: list[str] = []
+    for category, item in (session.component_recommendations or {}).items():
+        if not isinstance(item, dict):
+            continue
+        if item.get("selected_part"):
+            continue
+        if item.get("source") == "skipped":
+            continue
+        blockers.append(category)
+    state = _recommendation_state(session)
+    active_category = str(state.get("module_category", "")) if state else ""
+    if active_category and active_category not in blockers:
+        blockers.append(active_category)
+    return blockers
+
+
+def _skip_active_component_recommendation(session: ChatSession) -> bool:
+    state = _recommendation_state(session)
+    if not state:
+        return False
+    category = str(state.get("module_category", ""))
+    if not category:
+        return False
+    _save_component_recommendation(
+        session,
+        category=category,
+        constraints=dict(state.get("collected_constraints", {})),
+        candidates=list(state.get("candidate_parts", [])),
+        selected_part=None,
+        source="skipped",
+    )
+    _clear_recommendation_state(session)
+    typer.echo(f"已跳过 {category} 模块的器件选型。")
+    return True
+
+
 def _save_component_recommendation(
     session: ChatSession,
     *,
@@ -205,6 +242,7 @@ def _save_component_recommendation(
         "candidates": candidates,
         "selected_part": selected_part,
         "source": source,
+        "priority": "P0",
     }
     if session.pending_action is not None:
         session.pending_action.metadata["component_recommendations"] = session.component_recommendations
@@ -269,6 +307,9 @@ def _handle_component_recommendation_answer(session: ChatSession, payload: str) 
     category = str(state.get("module_category", ""))
     if not category:
         return False
+
+    if payload.strip().lower() in {"skip", "跳过", "跳过这个器件选型", "先跳过"}:
+        return _skip_active_component_recommendation(session)
 
     if _handle_direct_part_capture(session, service=service, payload=payload, category=category):
         return True
@@ -854,6 +895,12 @@ def command(
             typer.echo("Cleared chat history and pending action.")
             continue
 
+        if action == "skip":
+            if _skip_active_component_recommendation(session):
+                continue
+            typer.echo("当前没有可跳过的器件选型流程。")
+            continue
+
         if action == "no":
             if _recommendation_state(session):
                 _clear_recommendation_state(session)
@@ -920,6 +967,29 @@ def command(
             if stage == BRIEF_STAGE_READY and not session.brief_completed:
                 missing_labels = _brief_missing_labels(session)
                 typer.echo(f"还不能开始规划，仍缺少阻塞字段：{missing_labels}。")
+                continue
+
+            recommendation_blockers = _component_selection_blockers(session)
+            if stage == BRIEF_STAGE_READY and recommendation_blockers:
+                typer.echo(
+                    f"还不能开始规划，仍缺少 P0 器件选型：{'、'.join(recommendation_blockers)}。"
+                    "请完成选型，或输入 /skip 跳过当前器件。"
+                )
+                state = _recommendation_state(session)
+                if state:
+                    service = _recommendation_service()
+                    question = _recommendation_question_for_state(service, state)
+                    if question is not None:
+                        _show_recommendation_question(
+                            question,
+                            int(state.get('question_index', 0)) + 1,
+                            len(service.questions_for(str(state.get('module_category', '')))),
+                        )
+                    elif state.get("status") == "awaiting_selection":
+                        _show_candidates(
+                            candidates=list(state.get("candidate_parts", [])),
+                            exact_match_count=1,
+                        )
                 continue
 
             session.clear_pending_action()
@@ -1037,6 +1107,10 @@ def command(
                 continue
 
             if stage == BRIEF_STAGE_READY and _start_component_recommendation(session, payload):
+                continue
+
+            if stage == BRIEF_STAGE_READY:
+                typer.echo("结构化信息已满足规划门禁。若涉及器件选型，请先完成选型或输入 /yes 开始规划。")
                 continue
 
             _log_decision(

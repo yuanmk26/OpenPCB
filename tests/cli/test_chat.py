@@ -290,6 +290,7 @@ def test_chat_component_recommendation_for_mcu_persists_metadata() -> None:
         project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
         recommendations = project.get("metadata", {}).get("component_recommendations", {})
         assert recommendations.get("mcu", {}).get("selected_part") == "STM32F407VET6"
+        assert recommendations.get("mcu", {}).get("priority") == "P0"
 
 
 def test_chat_component_recommendation_for_power_persists_metadata() -> None:
@@ -360,3 +361,64 @@ def test_chat_component_recommendation_for_transceiver_persists_metadata() -> No
         project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
         recommendations = project.get("metadata", {}).get("component_recommendations", {})
         assert recommendations.get("transceiver", {}).get("selected_part") == "SN65HVD230"
+
+
+def test_chat_component_recommendation_blocks_plan_until_selected_or_skipped() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "我想设计一个STM32核心板\n"
+            "/yes\n"
+            "1\n"
+            "2\n"
+            "3\n"
+            "1\n"
+            "4\n"
+            "85x60mm 四层板\n"
+            "2\n"
+            "帮我推荐一个主控芯片\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "还不能开始规划，仍缺少 P0 器件选型：mcu。" in result.stdout
+        assert not (Path("demo") / "project.json").exists()
+
+
+def test_chat_component_recommendation_skip_unblocks_plan() -> None:
+    with runner.isolated_filesystem():
+        config = Path("openpcb.config.toml")
+        _write_mock_config(config)
+        user_input = (
+            "我想设计一个STM32核心板\n"
+            "/yes\n"
+            "1\n"
+            "2\n"
+            "3\n"
+            "1\n"
+            "4\n"
+            "85x60mm 四层板\n"
+            "2\n"
+            "帮我推荐一个主控芯片\n"
+            "/skip\n"
+            "/yes\n"
+            "/exit\n"
+        )
+        result = runner.invoke(
+            app,
+            ["chat", "--project-dir", "demo", "--project-name", "demo", "--config", str(config)],
+            input=user_input,
+        )
+        assert result.exit_code == 0
+        assert "已跳过 mcu 模块的器件选型。" in result.stdout
+        assert "已完成：`plan`。" in result.stdout
+        project = json.loads((Path("demo") / "project.json").read_text(encoding="utf-8"))
+        recommendations = project.get("metadata", {}).get("component_recommendations", {})
+        assert recommendations.get("mcu", {}).get("source") == "skipped"
+        assert recommendations.get("mcu", {}).get("selected_part") is None

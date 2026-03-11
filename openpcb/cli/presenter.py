@@ -19,6 +19,7 @@ def format_help_lines() -> list[str]:
         "- /edit <instruction>",
         "- /yes",
         "- /no",
+        "- /skip",
         "- /clear",
         "- /status",
         "- /help",
