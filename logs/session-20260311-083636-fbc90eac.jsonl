@@ -1,5 +1,0 @@
-{"ts": "2026-03-11T00:36:36.586718+00:00", "session_id": "20260311-083636-fbc90eac", "event": "session_started", "payload": {"project_dir": "E:\\projects\\3-Ai-agent\\OpenPCB", "current_mode": "system_architecture", "restored_from": null}}
-{"ts": "2026-03-11T00:36:36.587699+00:00", "session_id": "20260311-083636-fbc90eac", "event": "mode_initialized", "payload": {"current_mode": "system_architecture"}}
-{"ts": "2026-03-11T00:36:36.587699+00:00", "session_id": "20260311-083636-fbc90eac", "event": "user_input", "payload": {"raw": "/help", "action": "help"}}
-{"ts": "2026-03-11T00:36:36.587699+00:00", "session_id": "20260311-083636-fbc90eac", "event": "user_input", "payload": {"raw": "/exit", "action": "exit"}}
-{"ts": "2026-03-11T00:36:36.589815+00:00", "session_id": "20260311-083636-fbc90eac", "event": "session_ended", "payload": {}}
