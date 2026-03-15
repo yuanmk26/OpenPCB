@@ -1,338 +1,157 @@
 # OpenPCB
 
-OpenPCB 是一个面向 PCB 开发流程的 AI Agent 项目，目标是把电路设计过程尽可能代码化、结构化，并最终导出为 KiCad 可用的工程文件。
-
-当前项目的核心方向不是做一个“聊天式助手”，而是建立一条可自动化、可迭代、可验证的工程链路：
-
-`自然语言需求 -> 结构化项目描述 -> 电路模块组合 -> 原理图/工程导出 -> 规则检查 -> 增量修改`
+OpenPCB 是一个面向 PCB 设计流程的 AI Agent 框架，目标是将用户的自然语言硬件需求逐步转化为结构化设计规格、板卡架构方案，以及后续的原理图与布局任务。
 
 ## 项目目标
 
-这个项目希望解决两类问题：
+PCB 设计并不是一次性生成文件的问题，而是一个分阶段的工程流程，包括：
 
-1. 把模糊的硬件需求整理成可以执行的结构化设计描述。
-2. 把常见 PCB/原理图设计中的重复劳动转成可复用的模板和生成流程。
+1. 获取需求
+2. 补全约束
+3. 生成板卡架构
+4. 规划原理图
+5. 校验设计合理性
+6. 导出设计产物
 
-围绕这个目标，OpenPCB 计划支持以下工作流：
+OpenPCB 希望将这个过程显式建模为一个 AI Agent 系统，而不是把 PCB 设计当成一个大 prompt 一次性完成。
 
-- 输入自然语言需求，生成项目规划结果。
-- 用统一的中间数据结构描述模块、器件、网络和约束。
-- 基于模板拼装基础电路模块。
-- 导出 KiCad 工程文件，作为后续人工设计和迭代的起点。
-- 对生成结果做基础规则检查。
-- 通过自然语言对已有设计做增量修改。
+## 当前范围
 
-## 当前定位
+当前 MVP 主要聚焦于 **需求阶段**，包括：
 
-仓库目前仍处于早期骨架阶段，现阶段更接近一个正在搭建中的 MVP，而不是已经完成的可用产品。
+- 自然语言需求输入
+- `RequirementSpec` 结构化提取
+- 关键缺失字段识别
+- planner 驱动的下一步决策
+- orchestrator 驱动的 agent 主循环
+- 初步的 `ProjectState` 设计
 
-这意味着：
+当前暂不覆盖：
 
-- 项目方向和模块划分已经比较明确。
-- CLI、Agent、Schema、KiCad 导出这几条主线已经规划好。
-- 仓库中的不少实现文件目前还是占位状态，README 中的命令和能力应理解为目标设计，而不是全部已经落地。
+- 完整原理图自动生成
+- 自动布局布线
+- 完整 KiCad 工程导出
+- 完整器件选型闭环
+
+## 核心设计思想
+
+OpenPCB 当前遵循以下原则：
+
+- **Schema-first**：先定义结构化模型，再做生成
+- **State-centered**：agent 的本质是持续更新项目状态
+- **Workflow-driven**：将设计流程拆解为 requirement / architecture / schematic 等阶段
+- **Tool-based execution**：执行动作应通过工具层完成
+- **Human-in-the-loop**：用户应始终在设计回路中
+
+## 目录结构
+
+```text
+src/openpcb/
+  app/          # 应用入口与启动装配
+  agent/        # orchestrator、runtime、session
+  planner/      # 下一步动作决策
+  workflows/    # requirement / architecture / schematic 流程
+  domain/       # PCB 领域模型与 schema
+  services/     # 业务能力层
+  infra/        # LLM、存储、日志、配置
+  tools/        # 外部工具执行层
+  tests/        # 测试
+```
+## 当前开发重点
+
+当前优先事项包括：
+
+完善 RequirementSpec
+
+设计清晰的 ProjectState
+
+打通 planner / orchestrator / requirement service 主链路
+
+接入最小可用 LLM 抽取能力
+
+建立 requirement 阶段测试样例
+
+## 快速开始
+
+### 1. 创建虚拟环境
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
+### 2. 安装依赖
+
+``` bash
+pip install -e .
+```
+
+### 3. 配置环境变量
+
+复制 `.env.example` 为 `.env`，填写例如：
+
+- `OPENAI_API_KEY`
+- `OPENPCB_MODEL`
+
+### 4. 启动 CLI
+
+```
+PYTHONPATH=src python -m openpcb.app.cli
+```
+
+## 示例目标
+
+当前 MVP 的一个典型流程如下：
+
+用户输入：
+
+- 帮我设计一个 STM32 最小系统板，USB 供电，带 SWD 和串口。
+
+系统会：
+
+- 提取结构化需求
+- 识别缺失信息，例如 MCU 型号和系统电压
+- 发起补问
+- 更新项目状态
+- 判断是否可以进入 architecture 阶段
+
+## 路线图
+### Phase 1
+需求提取与补问闭环
+
+### Phase 2
+板卡架构生成
+
+### Phase 3
+原理图规划与中间产物生成
+
+### Phase 4
+工具接入、规则校验与布局支持
 
 ## 设计原则
 
-- 先打通完整链路，再追求高级能力。
-- 先用结构化中间表示，避免一开始就直接操作 KiCad 文件。
-- 所有中间结果尽量可落盘、可复现、可调试。
-- 先支持少量高频模块，再逐步扩展模板库。
-- 优先做工程上可验证的能力，而不是一次性追求“全自动 PCB 设计”。
+- 尽量使用显式状态，而不是隐式 prompt 状态
 
-## 规划中的 CLI 工作流
+- 尽量使用结构化 schema，而不是大段自由文本
 
-目标中的 CLI 形态大致如下：
+- 尽量使用阶段式 workflow，而不是单体式生成
 
-```bash
-openpcb init
-openpcb plan "<自然语言需求>"
-openpcb generate <project.json>
-openpcb check <project_dir 或 project.json>
-openpcb edit <project.json> "<修改需求>"
-```
+- 优先实现小而稳定的自动化，而不是大而脆弱的自动化
 
-对应职责：
+- 保持系统可理解、可测试、可扩展
 
-- `init`：初始化项目目录和基础文件。
-- `plan`：把自然语言需求转成结构化项目描述。
-- `generate`：基于 `project.json` 生成原理图工程和派生产物。
-- `check`：执行基础设计规则检查。
-- `edit`：对已有项目做增量修改并输出变更结果。
+## 当前状态
 
-## 目标输出
+OpenPCB 目前处于早期实验阶段，当前主要围绕：
 
-OpenPCB 预期会围绕一个统一的项目描述文件工作，例如 `project.json`，并逐步生成这些产物：
+- requirement extraction
+- planner 设计
+- workflow 拆解
+- state 建模
+- 最小 LLM 接入
 
-- `plan.md`
-- `project.json`
-- `output/kicad/*.kicad_pro`
-- `output/kicad/*.kicad_sch`
-- `bom.json`
-- `netlist.json`
-- 检查报告和编辑报告
+展开开发。
 
-其中最关键的一点是：**KiCad 导出能力是整个链路中的重要落点**。AI Agent 负责把需求整理和电路结构生成出来，KiCad 工程则作为后续人工审阅、修改和深化设计的载体。
+## License
 
-## 一个典型使用场景
-
-例如用户输入这样的需求：
-
-```text
-设计一个 STM32 最小系统板，带 USB-C 供电、SWD 下载接口、一个状态 LED、一个复位按键，并预留 UART 调试排针。
-```
-
-理想情况下，OpenPCB 会把这个需求拆解成若干模块：
-
-- MCU 最小系统
-- USB-C 电源输入
-- 3.3V 稳压
-- SWD 接口
-- 状态 LED
-- 复位按键
-- UART Header
-
-然后生成：
-
-- 结构化项目描述
-- 可读的规划文档
-- 基础 KiCad 原理图工程
-- BOM / netlist
-- 基础检查结果
-
-## 仓库结构
-
-当前仓库已经按后续实现方向预留了主要目录：
-
-```text
-openpcb/
-  agent/       # 需求解析、规划、编辑执行
-  cli/         # 命令行入口与子命令
-  io/          # 项目读写与导出
-docs/          # 设计文档
-examples/      # 示例项目
-tests/         # 测试
-```
-
-## 开发路线
-
-当前更现实的推进顺序是：
-
-1. 完成 Python 包与 CLI 基础骨架。
-2. 定义统一的 Schema / IR。
-3. 实现 mock/规则驱动的 `plan`。
-4. 实现模板系统和 `generate`。
-5. 实现最小可用的 KiCad writer。
-6. 补充 `check` 与 `edit`。
-7. 用示例项目和测试把主链路固定下来。
-
-## 当前状态说明
-
-如果你现在阅读这个仓库，可以把它理解为：
-
-- 一个明确瞄准 “AI + 代码化电路设计 + KiCad 导出” 的项目起点。
-- 一个已经完成任务拆解、但仍需要逐步补齐实现的工程骨架。
-- 一个适合继续迭代 CLI、Schema、模板系统和导出链路的基础仓库。
-
-## 后续 README 可继续补充的内容
-
-后面随着代码落地，README 可以继续增加：
-
-
-- 安装方式
-- 实际可运行的命令示例
-- `project.json` 示例
-- 生成出的 KiCad 文件示例
-- 支持的模块模板清单
-- 已实现/未实现能力对照表
-
-## 使用本地最新版本（推荐）
-
-为避免系统里旧的 `openpcb.exe` 干扰，建议优先使用下面两种方式运行当前仓库源码版本。
-
-### 方式 1：直接用 Python 模块入口
-
-```powershell
-# 查看当前源码版本
-d:\anaconda3\python.exe -m openpcb version
-
-# 查看命令帮助
-d:\anaconda3\python.exe -m openpcb --help
-
-# 执行 plan / build
-d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo
-d:\anaconda3\python.exe -m openpcb build demo
-```
-
-### 方式 2：使用本地运行脚本
-
-```powershell
-# 仅运行（不重新安装）
-powershell -ExecutionPolicy Bypass -File scripts\use-local-openpcb.ps1 -SkipInstall version
-
-# 运行任意命令
-powershell -ExecutionPolicy Bypass -File scripts\use-local-openpcb.ps1 -SkipInstall plan "design stm32 with usb and led" --project-name demo --project-dir demo
-powershell -ExecutionPolicy Bypass -File scripts\use-local-openpcb.ps1 -SkipInstall build demo
-```
-
-### 验证当前是否命中本地源码
-
-```powershell
-d:\anaconda3\python.exe -c "import openpcb,sys;print(sys.executable);print(openpcb.__file__);print(openpcb.__version__)"
-```
-
-输出中的 `openpcb.__file__` 应指向当前仓库路径，例如 `E:\projects\3-Ai-agent\OpenPCB\openpcb\__init__.py`。
-
-### 方式 3：彻底切换到当前版本（推荐用于出现旧参数时）
-
-当你看到类似 `No such option: --project-name` 这类“新参数不存在”的报错时，通常是命中了旧安装包。按下面步骤强制切换：
-
-```powershell
-# 1) 卸载旧版本（执行两次更稳妥）
-d:\anaconda3\python.exe -m pip uninstall -y openpcb
-d:\anaconda3\python.exe -m pip uninstall -y openpcb
-
-# 2) 回到仓库根目录，安装当前源码
-cd E:\projects\3-Ai-agent\OpenPCB
-d:\anaconda3\python.exe -m pip install -e .
-
-# 3) 验证是否命中当前源码
-d:\anaconda3\python.exe -m pip show openpcb
-d:\anaconda3\python.exe -c "import openpcb,sys;print(sys.executable);print(openpcb.__file__);print(openpcb.__version__)"
-d:\anaconda3\python.exe -m openpcb plan --help
-```
-
-建议后续固定使用：
-
-```powershell
-d:\anaconda3\python.exe -m openpcb ...
-```
-
-避免直接用裸 `openpcb ...`，可减少旧环境干扰。
-
-## 模型接入配置（OpenAI）
-
-`openpcb plan` 默认走 LLM 规划器（不自动回退 mock）。
-如果未配置 API Key，会直接报错并退出。
-
-### 1) 创建本地配置文件
-
-复制示例配置：
-
-```powershell
-copy openpcb\config\example.config.toml openpcb.config.toml
-```
-
-编辑 `openpcb.config.toml`：
-
-```toml
-provider = "openai"
-model = "gpt-4o-mini"
-api_key = "YOUR_OPENAI_API_KEY"
-base_url = "https://api.openai.com/v1/chat/completions"
-timeout = 30.0
-max_retries = 1
-use_mock_planner = false
-```
-
-### 2) 运行 plan（使用配置文件）
-
-```powershell
-d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo --config openpcb.config.toml
-```
-
-### 3) 临时切换模型参数
-
-```powershell
-d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo --config openpcb.config.toml --provider openai --model gpt-4o-mini
-```
-
-### 4) 仅用于测试：强制 mock planner
-
-```powershell
-d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo --use-mock-planner
-```
-
-> 安全提示：`openpcb.config.toml` 已加入 `.gitignore`，不要把真实 key 提交到仓库。
-
-### DeepSeek 快速配置
-
-如果你先试 DeepSeek API，可将本地配置改为：
-
-```toml
-provider = "deepseek"
-model = "deepseek-chat"
-api_key = "YOUR_DEEPSEEK_API_KEY"
-# base_url 可省略，默认会使用 https://api.deepseek.com/chat/completions
-use_mock_planner = false
-```
-
-运行示例：
-
-```powershell
-d:\anaconda3\python.exe -m openpcb plan "design stm32 with usb and led" --project-name demo --project-dir demo --config openpcb.config.toml --provider deepseek --model deepseek-chat
-```
-
-## 交互式使用（REPL）
-
-你可以使用 `openpcb chat` 进入交互式模式，在同一会话内连续执行 `plan/build/check/edit`。
-
-```powershell
-d:\anaconda3\python.exe -m openpcb chat --project-dir demo --project-name demo --config openpcb.config.toml
-```
-
-会话内支持：
-
-- 直接输入自然语言：执行 `plan`
-- `/build`：执行构建
-- `/check`：执行检查
-- `/edit <instruction>`：执行修改
-- `/status`：查看当前会话状态
-- `/help`：查看命令
-- `/exit`：退出会话
-
-示例会话：
-
-```text
-openpcb> design stm32 with usb and led
-openpcb> /build
-openpcb> /check
-openpcb> /edit add one more led
-openpcb> /build
-openpcb> /exit
-```
-
-会话日志会写入：`<project_dir>/logs/session-*.jsonl`。
-
-## Chat Mode (Conversation-Oriented)
-
-`openpcb chat` now supports automatic action routing from plain text.
-
-- Plain text is auto-routed to `plan`, `build`, `check`, or `edit`.
-- Write actions (`build`, `edit`) require confirmation first.
-- Use `/yes` to execute pending write action, `/no` to cancel it.
-- Slash commands are still available as force routes: `/build`, `/check`, `/edit <instruction>`.
-
-### Recommended flow
-
-```text
-openpcb> design stm32 with usb and led
-openpcb> add one more led
-openpcb> /yes
-openpcb> build outputs
-openpcb> /yes
-openpcb> check power risks
-openpcb> /exit
-```
-
-### Session and trace logs
-
-- Session log: `<project_dir>/logs/session-*.jsonl`
-- Runtime trace log: `<project_dir>/logs/agent-run-*.jsonl`
-
-Session log entries now include:
-- `decision`
-- `requires_confirmation`
-- `confirmed`
-- `action_route`
-- `reply_style`
+待定
