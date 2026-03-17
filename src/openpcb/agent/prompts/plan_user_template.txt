@@ -1,4 +1,0 @@
-Project name: {project_name}
-Requirement: {requirement}
-
-Return JSON with practical modules for a minimal but usable board plan.
