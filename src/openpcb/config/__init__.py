@@ -1,6 +1,3 @@
-"""Configuration package for OpenPCB."""
+from .settings import Settings, get_settings
 
-from .loader import load_agent_settings
-from .settings import AgentSettings
-
-__all__ = ["AgentSettings", "load_agent_settings"]
+__all__ = ["Settings", "get_settings"]

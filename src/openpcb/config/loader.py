@@ -7,7 +7,7 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
-from openpcb.config.settings import AgentSettings
+from openpcb.config.settings import Settings
 from openpcb.utils.errors import InputError
 
 
@@ -23,7 +23,7 @@ def _load_toml(path: Path) -> dict[str, Any]:
 def load_agent_settings(
     config_path: str | Path | None = None,
     overrides: dict[str, Any] | None = None,
-) -> AgentSettings:
+) -> Settings:
     """Load agent settings from file and optional runtime overrides."""
     path = Path(config_path or "openpcb.config.toml")
     file_payload = _load_toml(path)
@@ -37,7 +37,7 @@ def load_agent_settings(
         else:
             payload["api_key"] = os.getenv("OPENPCB_API_KEY")
 
-    settings = AgentSettings.from_dict(payload)
+    settings = Settings.from_dict(payload)
     if not settings.use_mock_planner and not settings.api_key:
         raise InputError(
             "Missing API key. Set `api_key` in config or DEEPSEEK_API_KEY/OPENPCB_API_KEY, "
