@@ -1,19 +1,34 @@
+interface PowerInRail:
+    vin: PowerIn
+    gnd: Ground
+
+interface PowerOutRail:
+    vout: PowerOut
+    gnd: Ground
+
 module LDO_Block(vout=3.3V):
-    port vin: PowerIn
-    port gnd: Ground
-    port vout: PowerOut
+    port pin: PowerInRail
+    port pout: PowerOutRail
 
     inst u_ldo: AMS1117(vout=vout) [role=regulator]
     inst c_in: C(value=10uF)
     inst c_out: C(value=22uF)
 
-    net vin_in: [vin, u_ldo.vin, c_in.1]
-    net vout_main: [u_ldo.vout, c_out.1, vout]
-    net gnd_ref: [gnd, u_ldo.gnd, c_in.2, c_out.2]
+    net vin_main: [pin.vin, u_ldo.vin, c_in.1]
+    net vout_main: [u_ldo.vout, c_out.1, pout.vout]
+    net gnd_ref: [pin.gnd, pout.gnd, u_ldo.gnd, c_in.2, c_out.2]
 
-    connect vin -> [u_ldo.vin, c_in.1]
-    connect vout -> [u_ldo.vout, c_out.1]
-    connect gnd -> [u_ldo.gnd, c_in.2, c_out.2]
+    connect pin.vin -> [u_ldo.vin, c_in.1]
+    connect pout.vout -> [u_ldo.vout, c_out.1]
+    tie pin.gnd = pout.gnd
+    connect pin.gnd -> [u_ldo.gnd, c_in.2, c_out.2]
+
+    domain pwr_out:
+        class: Power
+        source: pin.vin
+        return: pin.gnd
+        provider: u_ldo
+        consumers: [pout.vout]
 
     require decoupling for u_ldo
     constrain net vout_main ripple < 50mV

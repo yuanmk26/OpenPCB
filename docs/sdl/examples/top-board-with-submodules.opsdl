@@ -1,10 +1,21 @@
-interface Board_PWR:
+interface BoardPower:
     vbus_5v: PowerOut
     vdd_3v3: PowerOut
     gnd: Ground
 
+interface I2C:
+    scl: InOut
+    sda: InOut
+
+interface SWD:
+    swdio: InOut
+    swclk: Input
+    nreset: InOut
+    vtref: PowerIn
+
 module Top_Board_With_Submodules:
-    port pwr: Board_PWR
+    port pwr: BoardPower
+    port i2c_ext: I2C
 
     inst usb0: USB_Input_Block()
     inst pwr0: LDO_Block(vout=3.3V)
@@ -12,23 +23,31 @@ module Top_Board_With_Submodules:
     inst dbg0: Debug_Block()
     inst sns0: Sensor_I2C_Block(address=0x48)
 
-    domain pwr_domain: Power
-    domain io_domain: MixedSignal
+    group bringup_core: [pwr0, mcu0, dbg0]
 
-    net gnd_global: [pwr.gnd, usb0.gnd, pwr0.gnd, mcu0.gnd, dbg0.gnd, sns0.gnd]
-    net vbus_5v: [usb0.vbus_out, pwr0.vin, pwr.vbus_5v]
-    net vdd_3v3: [pwr0.vout, mcu0.vdd_3v3, dbg0.swd.vtref, sns0.vdd, pwr.vdd_3v3]
-
-    connect usb0.vbus_out -> [pwr0.vin, pwr.vbus_5v]
-    connect pwr0.vout -> [mcu0.vdd_3v3, dbg0.swd.vtref, sns0.vdd, pwr.vdd_3v3]
-    tie pwr.gnd = gnd_global
-
+    map usb0.vbus_out -> pwr0.pin.vin
     map mcu0.swd -> dbg0.swd
     map mcu0.i2c0 -> sns0.i2c
+    map mcu0.i2c0 -> i2c_ext
 
-    topology i2c_scl: mcu0.i2c0.scl => sns0.i2c.scl
-    topology i2c_sda: mcu0.i2c0.sda => sns0.i2c.sda
+    connect pwr.gnd -> [usb0.gnd, pwr0.pin.gnd, mcu0.pwr.gnd, dbg0.gnd, sns0.gnd]
+    connect pwr0.pout.vout -> [mcu0.pwr.vdd, dbg0.swd.vtref, sns0.vdd, pwr.vdd_3v3]
+    connect usb0.vbus_out -> [pwr0.pin.vin, pwr.vbus_5v]
 
-    require bringup_ready for [pwr0, mcu0, dbg0]
-    constrain domain pwr_domain isolated_from io_domain = false
+    tie pwr0.pout.gnd = pwr.gnd
+    tie pwr0.pin.gnd = pwr.gnd
+
+    domain board_power:
+        class: Power
+        source: usb0.vbus_out
+        return: pwr.gnd
+        provider: [usb0, pwr0]
+        consumers: [mcu0, dbg0, sns0]
+
+    topology i2c_scl: mcu0.i2c0.scl => sns0.i2c.scl => i2c_ext.scl
+    topology i2c_sda: mcu0.i2c0.sda => sns0.i2c.sda => i2c_ext.sda
+
+    require protection for usb0
+    require decoupling for mcu0
+    constrain domain board_power source = usb0.vbus_out
     place [usb0, dbg0] near board_edge

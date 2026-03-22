@@ -1,32 +1,39 @@
 # SDL Authoring Guide
 
 ## Purpose
-This guide provides practical authoring rules for engineers and agents writing `.opsdl` files.
+This guide defines how to author SDL files for OpenPCB v0.1 in a way that is readable, reviewable, and patch-friendly.
 
-## Authoring Principles
-- Keep one coherent module intent per file.
-- Keep SDL as design expression DSL, not as a serialized internal config format.
-- Prefer interface-first boundaries and direct connectivity statements.
-- Use stable instance names and explicit intent statements to support deterministic patching.
+## Core Authoring Principles
+- Module-first: model reusable blocks first, then compose.
+- Interface-first: define boundary contracts before wiring internals.
+- Connectivity-intent separation: keep `connect/expose/tie/topology` separate from `constrain/require/place`.
+- Boundary-safe hierarchy: parent modules connect via child ports/expose, not child-private nets.
+- Agent-friendly structure: stable names and paths for local patch operations.
 
-## Style Conventions
-- Use indentation-based statement style.
-- Do not use `module "name" {}` and heavy `key "value"` surfaces as primary authoring style.
-- Keep connectivity obvious with `connect`, `tie`, and `topology`.
-- Separate wiring intent from requirement and placement intent (`require`, `constrain`, `place`).
-- Prefer meaningful names for modules/interfaces/instances over library-detail-heavy snippets.
+## Recommended Authoring Flow
+1. Define interfaces.
+2. Define module signature and parameters.
+3. Declare ports.
+4. Instantiate components/modules.
+5. Add connect/net/tie/topology/map statements.
+6. Add constraint/require/place/domain/group intent.
+7. Run validation and normalize output.
 
-## Recommended Workflow
-1. Define interfaces and module signature (including parameters if needed).
-2. Declare ports and instantiate parts/submodules with `inst`.
-3. Express connectivity with `connect`; add explicit `net` names only where identity matters.
-4. Add `map`/`expose` for composition boundaries and interface binding.
-5. Add `topology`, `constrain`, `require`, `place`, and `domain` intent statements.
-6. Run validation and normalize ordering for deterministic diffs.
+## Naming and Stability Conventions
+- Use stable and explicit instance names (`u_mcu`, `pwr0`, `dbg0`).
+- Keep interface member names semantic (`scl`, `sda`, `nreset`, `vtref`).
+- Use deterministic group/domain names (`bringup_core`, `board_power`).
+- Prefer RefPath-stable identifiers to reduce patch ambiguity.
+
+## Authoring Anti-Patterns
+- Writing SDL as generic key-value config.
+- Mixing requirement obligations directly into raw connectivity lines.
+- Directly reaching into child-local internal nets from parent modules.
+- Large broad rewrites when local patch-style edits are possible.
 
 ## Review Checklist
-- Interfaces and ports communicate module boundaries clearly.
-- `connect` lines make electrical relationships immediately understandable.
-- `topology` statements are used where path order is important.
-- `constrain` and `require` are not mixed semantically.
-- Placement and requirement intent are explicit and reviewable.
+- Module boundaries are explicit and respected.
+- Interfaces are complete and mapping is explicit where names differ.
+- Requirements are stated and checkable.
+- Placement hints are intent-level and not pseudo-geometry.
+- Domain definitions include source/return/provider/consumers where relevant.

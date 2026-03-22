@@ -7,20 +7,22 @@ module Sensor_I2C_Block(address=0x48):
     port vdd: PowerIn
     port gnd: Ground
 
-    inst u_sensor: I2C_Temp_Sensor(addr=address) [role=sensor]
+    inst u_sensor: TMP102(addr=address) [role=sensor]
     inst r_scl: R(value=4.7k)
     inst r_sda: R(value=4.7k)
+    inst c_dec: C(value=100nF) [role=decoupling]
 
-    net vdd_main: [vdd, u_sensor.vdd, r_scl.1, r_sda.1]
-    net gnd_main: [gnd, u_sensor.gnd]
-    net scl_main: [u_sensor.scl, r_scl.2, i2c.scl]
-    net sda_main: [u_sensor.sda, r_sda.2, i2c.sda]
+    net vdd_main: [vdd, u_sensor.vdd, r_scl.1, r_sda.1, c_dec.1]
+    net gnd_main: [gnd, u_sensor.gnd, c_dec.2]
+    net scl_main: [i2c.scl, u_sensor.scl, r_scl.2]
+    net sda_main: [i2c.sda, u_sensor.sda, r_sda.2]
 
-    connect vdd -> [u_sensor.vdd, r_scl.1, r_sda.1]
-    connect gnd -> u_sensor.gnd
+    connect vdd -> [u_sensor.vdd, r_scl.1, r_sda.1, c_dec.1]
+    connect gnd -> [u_sensor.gnd, c_dec.2]
     connect i2c.scl -> [u_sensor.scl, r_scl.2]
     connect i2c.sda -> [u_sensor.sda, r_sda.2]
 
     require pullup for i2c
+    require decoupling for u_sensor
     constrain bus i2c frequency <= 400kHz
-    place [u_sensor, r_scl, r_sda] compact
+    place [u_sensor, r_scl, r_sda, c_dec] compact

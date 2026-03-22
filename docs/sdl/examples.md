@@ -1,29 +1,27 @@
 # SDL Examples Catalog
 
 ## Purpose
-This file maps each draft `.opsdl` example to concrete design intent.
-Examples use the canonical indentation engineering DSL style.
+This file maps each example to required SDL capabilities in the current OpenPCB phase.
+Examples are architecture-aligned and should be read as semantic design expressions, not IR/config dumps.
 
-## Example List
-- `examples/stm32-min-system.opsdl`: parameterized MCU base module with debug and I2C interfaces.
-- `examples/ldo-block.opsdl`: parameterized regulator module with direct power connectivity and placement intent.
-- `examples/usb-input-block.opsdl`: USB input front-end with topology path intent and protection requirements.
-- `examples/debug-block.opsdl`: debug connector module using interface-first exposure.
-- `examples/sensor-i2c-block.opsdl`: sensor module with typed I2C interface, pull-ups, and simple constraints.
-- `examples/top-board-with-submodules.opsdl`: top-level nested composition with `inst`, `map`, and cross-module connections.
+## Capability Matrix
+| Example | Required Capabilities |
+| --- | --- |
+| `stm32-min-system.opsdl` | MCU core, decoupling, reset/boot pins, basic power nets, interface mapping |
+| `ldo-block.opsdl` | Parameterized module, power in/out, compact placement hint |
+| `usb-input-block.opsdl` | External connector, protection, topology chain, board-edge placement |
+| `debug-block.opsdl` | SWD interface, expose workflow |
+| `sensor-i2c-block.opsdl` | I2C interface, pullup and decoupling requirement, sensor role |
+| `top-board-with-submodules.opsdl` | Nested module composition, top-level wiring via ports/expose, domain/group organization |
 
-## Style Expectations
-- Examples are design-expression DSL, not low-level IR/config.
-- Connectivity should be readable at first glance (`connect`, `tie`, `topology`).
-- Interfaces and module boundaries should be explicit.
-- `require` and `place` statements are separate from connectivity and should not be hidden in metadata.
+## Reading Guide
+1. Read module signatures and interfaces first.
+2. Inspect instance graph and boundary ports.
+3. Read connectivity (`connect`, `tie`, `topology`, `map`).
+4. Read intent layer (`constrain`, `require`, `place`, `domain`, `group`).
 
-## How to Read
-1. Start from `interface` declarations and module signatures.
-2. Inspect `inst`, `port`, and `map` to understand composition boundaries.
-3. Read `connect`, `tie`, and `topology` as electrical intent.
-4. Read `constrain`, `require`, and `place` as design intent and review targets.
-
-## Known Simplifications
-- Library part models and pad-level details are intentionally abbreviated.
-- Rules are representative and not a complete manufacturing constraint deck.
+## Review Checklist for Examples
+- Uses module-first and interface-first structure.
+- Does not rely on private child-net reach-through from parent module.
+- Separates connectivity from constraints/requirements/placement hints.
+- Includes stable references suitable for patch-style agent operations.

@@ -1,25 +1,28 @@
 # SDL Roadmap
 
 ## Purpose
-Track SDL spec maturation from draft skeleton to implementation-ready contract.
+Track SDL maturation in a sequence aligned with OpenPCB architecture policy.
 
-## Milestones
-## M1: Documentation Skeleton (Current)
-- Complete document set and minimal examples.
-- Align terminology, syntax draft, and semantic rule baseline.
+## Milestone M1: Authoritative SDL Baseline (Current)
+- Lock SDL positioning as authoritative description.
+- Align object dictionary, semantic rules, syntax, and examples.
+- Establish patch-first agent operation guidance.
 
-## M2: Validation Contract
-- Define machine-checkable rule catalog.
-- Freeze required object fields for v0.2.
+## Milestone M2: Layered Generation Semantics
+- Stabilize schematic chain layering contracts.
+- Stabilize layout chain layering contracts.
+- Define minimum runtime normalized model interface for tools.
 
-## M3: Runtime Mapping
-- Define stable mapping from SDL to internal structured representation.
-- Add compatibility notes for revision upgrades.
+## Milestone M3: Validation and Policy Maturity
+- Expand completeness checks and profile packs.
+- Formalize power-domain and topology checks.
+- Add stronger connector-protection policy coverage.
 
-## M4: Toolchain Integration
-- Bind SDL contract to parser, generation pipelines, and exporters.
-- Publish compatibility matrix and migration guide.
+## Milestone M4: Tooling and Compatibility
+- Integrate parser/validator/exporter implementations against SDL contracts.
+- Publish compatibility and migration notes for syntax/semantic revisions.
 
 ## Risks
-- Early syntax choices may require controlled breaking changes.
-- Example coverage may lag behind real-world design complexity.
+- Over-expanding scope into full geometry too early.
+- Allowing ad-hoc direct text rewrites to bypass structured patch workflows.
+- Divergence between examples and semantic rules if updates are not synchronized.

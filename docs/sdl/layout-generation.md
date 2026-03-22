@@ -1,25 +1,52 @@
 # SDL to Layout Generation Guide
 
 ## Purpose
-This document outlines how SDL intent can inform downstream PCB layout preparation.
-It is a planning contract, not an autorouter specification.
+This document defines the layered chain from SDL semantics to PCB layout output.
+The goal is semantic separation before geometry commitment.
 
-## Input Expectations
-- Schematic-level connectivity is complete and validated.
-- Components include enough metadata for package/placement intent.
-- Net classes or constraints exist where routing intent matters.
+## Canonical Chain
+`SDL -> footprint semantic model -> PCB logical layout model -> PCB geometry model -> layout file / PCB render`
 
-## Handoff Artifacts
-- Component instance list with package hints.
-- Netlist-level connectivity.
-- Constraint and class annotations relevant to placement/routing.
+## Key Rules
+- Footprint semantics are not only "choose one footprint name".
+- SDL should not be bound directly to final geometry in current phase.
+- Keep footprint semantics and layout logic as explicit intermediate layers.
 
-## Expected Behaviors
-- Preserve connectivity identity from SDL through handoff.
-- Preserve explicit constraint intent where representable.
-- Report unsupported or lossy mappings as diagnostics.
+## Layer Responsibilities
+### 1. SDL
+- Provides module/interface/connectivity/domain/constraint/placement semantics.
 
-## Deferred Topics
-- Geometry-specific constraint syntax.
-- Differential pair and length tuning formalization.
-- Layer stack and manufacturing rule binding.
+### 2. Footprint Semantic Model
+Minimum responsibilities:
+- instance-to-footprint mapping
+- pin-pad mapping
+- footprint physical role
+- orientation preference
+- placement preference hints
+
+### 3. PCB Logical Layout Model
+Minimum responsibilities:
+- placement groups
+- layout constraints
+- routing semantics
+- diff pair / clock / power class intent
+- board edge anchors
+- power regions / logical placement regions
+
+### 4. PCB Geometry Model
+Geometry-only responsibilities:
+- x/y coordinates
+- rotation
+- tracks
+- vias
+- copper zones
+- board outline
+- keepout regions
+
+### 5. Layout File / PCB Render
+- Final output for PCB tools and visual rendering.
+- Should preserve logical intent decisions from upstream layers.
+
+## OpenPCB v0.1 Guidance
+- Prioritize clean semantic layering over early geometry detail expansion.
+- Keep domain, topology, and requirement intent available to logical layout stage.

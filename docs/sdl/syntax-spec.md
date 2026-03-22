@@ -1,120 +1,119 @@
 # SDL Syntax Specification (Draft v0.1)
 
 ## Purpose
-This document defines the recommended SDL surface syntax for `.opsdl` files.
-The canonical style is an indentation-first engineering DSL for design expression, agent edits, and review.
+This document defines the recommended SDL surface syntax for OpenPCB.
+The style is indentation-first engineering DSL focused on design expression and review.
 
-## Canonical Surface Style
-- SDL is written as statement-oriented design code, not JSON-like or block-config data.
-- Indentation defines structure.
-- Module and interface are first-class language entities.
-- Connectivity is expressed with direct `connect`, `tie`, and `topology` statements.
+## Syntax Positioning
+- SDL syntax serves engineering intent clarity first.
+- It is not designed as a low-level config serialization format.
+- Formal parser grammar can be tightened later; current goal is clear and consistent authoring semantics.
 
-The following styles are non-canonical in this phase:
+## Canonical Style
+- Use indentation to express structure.
+- Use statement-oriented forms.
+- Keep interface/module/connectivity/intent statements explicit.
+
+Non-canonical style in v0.1:
 - `module "name" { ... }`
-- `key "value"`-heavy configuration shape
-- net blocks used as generic config containers
+- key-value heavy configuration style
+- hiding constraints/requirements inside generic metadata blobs
 
-## Lexical Conventions
+## Lexical Basics
 - Encoding: UTF-8.
-- Comments start with `#`.
-- Indentation is significant and uses 4 spaces per level.
-- Identifiers use `[A-Za-z_][A-Za-z0-9_]*`.
-- Numeric values may include engineering units such as `3.3V`, `10uF`, `4.7k`.
+- Comment prefix: `#`.
+- Indentation: 4 spaces.
+- Identifier: `[A-Za-z_][A-Za-z0-9_]*`.
+- Values may include engineering units (`3.3V`, `10uF`, `100MHz`).
 
-## File Structure
-A file may define one or more `interface` blocks and one or more `module` blocks.
-A board-level file typically ends with one top-level composition module.
-
-## Core Declarations
-### `interface`
-Defines reusable typed external contracts.
-
-```text
-interface UART:
-    tx: Output
-    rx: Input
-```
-
+## Required Statement Set
 ### `module`
-Defines a design unit. Parameterized modules are supported.
+Defines reusable design unit. Parentheses declare parameters.
 
 ```text
 module LDO_Block(vout=3.3V):
-    port vin: PowerIn
-    port gnd: Ground
-    port vout: PowerOut
+    ...
+```
+
+### `interface`
+Defines structured heterogeneous boundary contract.
+
+```text
+interface I2C:
+    scl: InOut
+    sda: InOut
 ```
 
 ### `inst`
-Creates a module or library part instance.
+Instantiates component type or module with arguments.
 
 ```text
-inst u_ldo: AMS1117_3V3(vout=vout) [role=regulator]
-inst mcu0: STM32_Min_System()
+inst u_ldo: AMS1117(vout=vout) [role=regulator]
+inst mcu0: STM32_Min_System(hse=8MHz)
 ```
 
 ### `port`
-Declares module ports with types or interfaces.
+Declares module boundary endpoint.
 
 ```text
-port usb: USB2_Device
+port vdd: PowerIn
 port swd: SWD
-port gnd: Ground
 ```
 
 ### `net`
-Declares explicit named nets in concise statement form.
+Declares named connectivity equivalence class.
 
 ```text
-net vbus_raw: [j_usb.vbus, f_vbus.in]
-net gnd: [j_usb.gnd, d_usb.gnd, gnd]
+net vdd_3v3: [u_ldo.vout, mcu0.vdd, sensor0.vdd]
 ```
 
-## Connectivity and Interface Binding
+### `group`
+Declares logical non-electrical grouping.
+
+```text
+group bringup_core: [pwr0, mcu0, dbg0]
+```
+
 ### `connect`
-Direct connection expression for clear engineering readability.
+Declares direct connectivity intent.
 
 ```text
 connect vin -> [u_ldo.vin, c_in.1]
 connect usb <-> j_usb.usb2
+connect i2c.scl -> [u_sensor.scl, r_scl.2]
 ```
 
 ### `expose`
-Exports instance-internal signals/interfaces to module-level ports.
+Exports internal instance endpoint/interface to module boundary.
 
 ```text
 expose j_swd.swd as swd
-expose mcu0.uart_dbg as uart_dbg
 ```
 
 ### `tie`
-Aliases two named nets or ports that must be electrically identical.
+Declares fixed equivalence binding.
 
 ```text
 tie agnd = gnd
-tie shield_gnd = gnd
 ```
 
 ### `topology`
-Defines ordered path intent when sequence matters.
+Declares ordered signal path semantics.
 
 ```text
 topology usb_dp: j_usb.dp => d_esd.dp => usb.dp
-topology usb_dm: j_usb.dm => d_esd.dm => usb.dm
 ```
 
-## Constraint and Intent Statements
 ### `constrain`
-Hard, machine-checkable rule that should evaluate to pass/fail.
+Declares machine-checkable rule or preference.
 
 ```text
-constrain net vout ripple < 50mV
-constrain pair usb_dp usb_dm skew < 20ps
+constrain net vout_main ripple < 50mV
+constrain bus i2c frequency <= 400kHz
 ```
 
 ### `require`
-Engineering requirement intent. It is normative design intent and may map to checks over time.
+Declares engineering obligation.
 
 ```text
 require decoupling for u_mcu
@@ -122,7 +121,7 @@ require protection for j_usb
 ```
 
 ### `place`
-Placement intent at design-expression level.
+Declares placement hint (not final coordinates).
 
 ```text
 place [u_ldo, c_in, c_out] compact
@@ -130,27 +129,50 @@ place j_usb on board_edge
 ```
 
 ### `domain`
-Declares or assigns functional/electrical domains.
+Declares semantic domain object.
 
 ```text
-domain power_3v3: Power
-domain usb_sig: HighSpeedDigital
+domain pwr_3v3:
+    class: Power
+    source: usb0.vbus_out
+    return: gnd_global
+    provider: pwr0
+    consumers: [mcu0, sns0, dbg0]
 ```
 
 ### `map`
-Maps interfaces or ports across module boundaries.
+Declares explicit interface/member mapping.
 
 ```text
-map usb0.vbus_out -> pwr0.vin
-map dbg0.swd -> mcu0.swd
+map mcu0.i2c0 -> sns0.i2c
+map debug_port.nrst -> mcu0.swd.nreset
 ```
 
-## Integrated Example
+### `bus` / `vector`
+Declares homogeneous indexed signals.
+
+```text
+bus gpio[0..15]: DigitalIO
+vector adc_in[0..3]: AnalogIn
+```
+
+## Parameter and Instantiation Rules
+- `module Name(...)`: parameter declaration at module definition.
+- `inst x: Name(...)`: argument assignment at instance site.
+- Omitted argument values use module-defined defaults.
+
+## Interface and Mapping Rules (Syntax-Level)
+- Interface members are addressed using dotted paths.
+- Interface-to-interface connect may be direct if members align.
+- Use `map` when member names are not identical.
+
+## Minimal Composite Example
 ```text
 interface SWD:
     swdio: InOut
     swclk: Input
     nreset: InOut
+    vtref: PowerIn
 
 module Debug_Block:
     port swd: SWD
@@ -163,7 +185,6 @@ module Debug_Block:
     place j_swd near board_edge
 ```
 
-## Grammar and Evolution Notes
-- This is a draft language contract and not yet a full formal grammar.
-- Whitespace and comments are non-semantic except indentation level.
-- Unknown statements are invalid unless explicitly enabled by a future extension profile.
+## Draft Notes
+- This document describes syntax shape and required capabilities, not full parser EBNF.
+- Semantics are defined in `semantic-rules.md`.

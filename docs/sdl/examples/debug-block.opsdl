@@ -8,11 +8,12 @@ module Debug_Block:
     port swd: SWD
     port gnd: Ground
 
-    inst j_swd: SWD_Header_2x5 [role=debug_connector]
+    inst j_swd: SWD_Header_2x5 [role=external_connector]
     expose j_swd.swd as swd
 
     net gnd_ref: [j_swd.gnd, gnd]
     connect j_swd.gnd -> gnd
 
     require accessible for j_swd
+    require protection for j_swd
     place j_swd near board_edge

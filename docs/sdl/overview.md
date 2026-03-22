@@ -1,117 +1,95 @@
 # OpenPCB SDL Overview
 
 ## Introduction
-OpenPCB SDL (Schematic Description Language) is the textual contract used to describe schematic design intent in OpenPCB.
-It is designed for three practical audiences:
-- OpenPCB developers who need a stable semantic center for implementation.
-- Agent and LLM engineers who need deterministic read/write and validation targets.
-- Collaborators who need a clear statement of what OpenPCB design data means at this stage.
+OpenPCB SDL is a schematic-oriented design language used as the authoritative description of circuit intent.
+It serves three direct audiences:
+- OpenPCB developers implementing parsing, validation, and generation pipelines.
+- Agent/LLM engineers integrating structured edit and review workflows.
+- Collaborators who need a stable view of design semantics and project boundaries.
 
-This document defines SDL positioning, boundaries, and current scope.
-SDL is intentionally authored as an engineering language, not as a low-level JSON-like configuration surface.
-Detailed syntax and semantics are defined in `syntax-spec.md`, `semantic-rules.md`, and `object-dictionary.md`.
+## Positioning in OpenPCB
+SDL is the upstream semantic contract in the current architecture:
+- `SDL -> parser/loader -> derived runtime structure -> validation/generation/export`.
+- SDL files are authoritative and human-reviewable.
+- Runtime structures are operational derivatives, not a competing source of truth.
 
-## Design Goals
-The current SDL draft focuses on engineering utility instead of language completeness.
+## Problems SDL Solves
+- Provides one version-controlled language for module structure, interfaces, connectivity, and engineering intent.
+- Supports reusable module composition and hierarchical design.
+- Supports deterministic patch-style local edits for agents.
+- Supports consistent input for schematic/layout generation chains.
 
-Primary goals:
-- Provide a reviewable, versioned, text-first source for schematic intent.
-- Represent electrical objects and connectivity with explicit, machine-checkable semantics.
-- Support deterministic agent workflows for generation, patching, and validation.
-- Keep the language narrow enough to stabilize quickly while still useful for real project iteration.
-- Keep circuit expression human-readable with interface-first, module-first, and direct-connect statements.
+## What SDL Does Not Cover
+- Not final schematic file geometry.
+- Not final PCB geometry.
+- Not GUI-internal persistence format.
+- Not full simulation, full thermal, or full supply-chain optimization semantics in this phase.
 
-## Architectural Position in OpenPCB
-SDL is the center contract between authoring, automation, and downstream artifacts.
+## Relationships to Other System Parts
+### GUI
+- GUI edits and displays design state through SDL semantics.
+- GUI state must map to SDL and should not become an independent authority layer.
 
-### SDL and GUI
-- GUI is a producer/consumer interface for design editing and inspection.
-- GUI state is not the authority; SDL text remains the canonical contract.
-- GUI operations should map to explicit SDL objects and changes.
+### Schematic Artifacts
+- Schematic files/views are downstream renderings from SDL-derived models.
+- SDL describes semantic intent before diagram geometry.
 
-### SDL and Schematic Artifacts
-- Schematic visual views/files are treated as derived representations of SDL intent.
-- SDL defines interfaces, module ports, instance wiring, topology, and design constraints that those views reflect.
+### Layout Artifacts
+- SDL provides bridge semantics for layout preparation (domains, constraints, hints).
+- SDL does not directly encode final board geometry.
 
-### SDL and Layout Artifacts
-- In v0.1, SDL carries schematic semantics plus selected bridge metadata for layout handoff.
-- SDL is not yet a full geometry/routing/manufacturing language.
-- Layout-specific completeness is intentionally deferred.
+### Agent Workflows
+- Recommended mainline: structured patch/tool operations on SDL-derived structure.
+- Direct large free-form text rewrites are discouraged because they increase semantic drift risk.
 
-### SDL and Agent/LLM Workflows
-- Agents read SDL to understand current design intent.
-- Agents write SDL patches to add, modify, or remove intent in deterministic units at statement/module granularity.
-- Validation uses SDL syntax and semantic rules as acceptance gates.
+### Exporters
+- Exporters consume normalized SDL-derived structures.
+- Exporters must follow SDL semantics, not ad-hoc assumptions from visual layout alone.
 
-### SDL and Exporters
-- Exporters consume normalized and resolved SDL meaning.
-- Export behavior should depend on SDL semantics, not implicit GUI state.
-- Exporter-specific details are out of scope for this overview.
+## Why SDL as Authoritative Description Is Reasonable Now
+- Keeps architecture simple while implementation is still maturing.
+- Preserves one human-readable and reviewable source of truth.
+- Enables deterministic diffs and controlled local updates.
+- Avoids premature coupling to one GUI schema or one exporter schema.
 
-### Why SDL as Authority Is Reasonable at This Stage
-- It enables deterministic diffs and patches for human review and automated workflows.
-- It gives agent systems a stable and explicit edit surface.
-- It avoids coupling core design meaning to early GUI or exporter implementation choices.
-- It creates a single semantic source before parser/runtime/export maturity.
-- It keeps design discussions focused on electrical intent (`connect`, `topology`, `require`) instead of low-level IR encoding.
+## Current Scope Boundary (v0.1)
+In-scope:
+- Schematic semantics.
+- Module hierarchy and reuse.
+- Interface modeling and mapping.
+- Connectivity semantics and topology intent.
+- Constraint, requirement, placement hint, and power-domain bridge semantics.
 
-## Boundaries and Non-Goals
-SDL currently solves:
-- Schematic-level semantics centered on interface/module/instance composition.
-- Connectivity intent and reference relationships through direct wiring statements.
-- Bridge-level metadata needed to hand intent to downstream schematic/layout/export stages.
+Out-of-scope:
+- Full-stack PCB authoring semantics.
+- Complete physical-geometry semantics.
+- Full production-grade domain models for simulation/thermal/supply chain.
 
-SDL does not currently solve:
-- Full PCB stack definition including complete physical layout specification.
-- Full routing geometry, layer-stack authoring, and manufacturing-ready CAM semantics.
-- Tool-specific runtime behavior contracts for every parser/GUI/export implementation.
-
-## Current Version Scope (v0.1)
-v0.1 is a draft contract focused on schematic semantics and related bridge semantics.
-
-Included in scope:
-- Indentation-first engineering DSL syntax draft for `.opsdl`.
-- Core object dictionary and baseline semantic statements.
-- Semantic normalization and validation-oriented rules.
-- Minimal but concrete examples for common board sub-block patterns.
-
-Out of scope in v0.1:
-- Final grammar lock and compatibility guarantees.
-- Complete layout language model.
-- End-to-end production toolchain contract.
-
-## Minimal SDL Example and Walkthrough
-Example:
-
+## Minimal Example
 ```text
-interface PowerRail:
-    vin: PowerIn
+interface PowerRail3V3:
+    vdd: PowerIn
     gnd: Ground
-    vout: PowerOut
 
 module LDO_Block(vout=3.3V):
-    port pwr: PowerRail
+    port pwr_in: PowerRail3V3
+    port pwr_out: PowerRail3V3
 
     inst u_ldo: AMS1117(vout=vout) [role=regulator]
     inst c_in: C(value=10uF)
     inst c_out: C(value=22uF)
 
-    connect pwr.vin -> [u_ldo.vin, c_in.1]
-    connect pwr.vout -> [u_ldo.vout, c_out.1]
-    connect pwr.gnd -> [u_ldo.gnd, c_in.2, c_out.2]
+    connect pwr_in.vdd -> [u_ldo.vin, c_in.1]
+    connect pwr_out.vdd -> [u_ldo.vout, c_out.1]
+    tie pwr_in.gnd = pwr_out.gnd
+    connect pwr_in.gnd -> [u_ldo.gnd, c_in.2, c_out.2]
 
     require decoupling for u_ldo
     place [u_ldo, c_in, c_out] compact
 ```
 
-Walkthrough:
-- `interface PowerRail` defines a reusable external contract rather than repeated ad-hoc scalar ports.
-- `module LDO_Block(vout=3.3V)` shows parameterized module authoring.
-- `inst` statements identify concrete parts and module internals.
-- `connect` statements make electrical intent obvious at a glance.
-- `require` and `place` stay independent from wiring, so review can separate function, constraints, and physical intent.
-
-Downstream implication:
-- A GUI can map interactions back to stable design statements.
-- An agent can patch intent-level lines (`connect`, `require`, `map`) without rewriting unrelated structure.
-- A schematic/export stage can derive consistent connectivity from the same canonical design expression.
+## Example Notes
+- `interface` captures structured external semantics.
+- `module` with parameters captures reusable architecture blocks.
+- `connect`/`tie` capture connectivity.
+- `require`/`place` capture implementation intent separate from connectivity.

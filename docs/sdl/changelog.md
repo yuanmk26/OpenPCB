@@ -1,13 +1,20 @@
 # SDL Documentation Changelog
 
 ## Purpose
-Record notable updates to SDL documentation artifacts and examples.
+Record factual updates to SDL documentation architecture and examples.
 
 ## 2026-03-22
-- Initialized SDL documentation skeleton under `docs/sdl/`.
-- Added first draft of terminology, object dictionary, syntax, semantics, and guides.
-- Added minimal `.opsdl` examples for common board building blocks.
+- Bootstrapped initial SDL document set and baseline examples.
+- Expanded overview positioning and practical SDL role statement.
+- Migrated surface style to indentation engineering DSL.
+- Realigned all SDL docs with architecture consensus:
+  - SDL authority policy and derived runtime model policy
+  - four-layer object system
+  - semantic rules and completeness checks
+  - schematic/layout layered generation chains
+  - structured patch workflow and operation examples
+- Updated all six `.opsdl` examples to match architecture and syntax contracts.
 
 ## Change Policy
-- Add one dated entry per meaningful SDL doc update batch.
-- Keep entries factual and linked to repository change records.
+- Keep entries concise and implementation-phase factual.
+- Link each update batch to change records under `docs/changes/<date>/`.

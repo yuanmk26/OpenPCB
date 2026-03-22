@@ -1,3 +1,7 @@
+interface PowerRail3V3:
+    vdd: PowerIn
+    gnd: Ground
+
 interface SWD:
     swdio: InOut
     swclk: Input
@@ -8,23 +12,30 @@ interface I2C:
     scl: InOut
     sda: InOut
 
-module STM32_Min_System(hse=8MHz):
-    port vdd_3v3: PowerIn
-    port gnd: Ground
+module STM32_Min_System(hse=8MHz, boot_pull=10k):
+    port pwr: PowerRail3V3
     port swd: SWD
     port i2c0: I2C
+    port boot0: Input
+    port nreset: InOut
 
-    inst u_mcu: STM32F103C8(hse=hse) [role=controller]
-    inst c_vdd: C(value=100nF) [role=decoupling]
+    inst u_mcu: STM32F103C8(hse=hse) [role=mcu]
+    inst c_vdd_a: C(value=100nF) [role=decoupling]
+    inst c_vdd_b: C(value=1uF) [role=decoupling]
+    inst r_boot0: R(value=boot_pull)
 
-    net vdd_main: [vdd_3v3, u_mcu.vdd, c_vdd.1]
-    net gnd_main: [gnd, u_mcu.vss, c_vdd.2]
+    net vdd_main: [pwr.vdd, u_mcu.vdd, c_vdd_a.1, c_vdd_b.1, r_boot0.1]
+    net gnd_main: [pwr.gnd, u_mcu.vss, c_vdd_a.2, c_vdd_b.2]
+    net boot0_net: [boot0, u_mcu.boot0, r_boot0.2]
 
-    connect vdd_3v3 -> [u_mcu.vdd, c_vdd.1]
-    connect gnd -> [u_mcu.vss, c_vdd.2]
+    connect pwr.vdd -> [u_mcu.vdd, c_vdd_a.1, c_vdd_b.1, r_boot0.1]
+    connect pwr.gnd -> [u_mcu.vss, c_vdd_a.2, c_vdd_b.2]
+    connect boot0 -> [u_mcu.boot0, r_boot0.2]
+    expose u_mcu.nrst as nreset
     map u_mcu.swd -> swd
     map u_mcu.i2c1 -> i2c0
 
     require decoupling for u_mcu
+    require pullup for boot0
     constrain clock u_mcu.hse = hse
-    place c_vdd near u_mcu
+    place [u_mcu, c_vdd_a, c_vdd_b] compact

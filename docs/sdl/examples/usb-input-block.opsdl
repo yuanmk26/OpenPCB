@@ -10,8 +10,10 @@ module USB_Input_Block:
     port gnd: Ground
 
     inst j_usb: USB_C_Receptacle [role=external_connector]
-    inst f_vbus: Resettable_Fuse [role=inrush_limit]
+    inst f_vbus: Resettable_Fuse [role=protection]
     inst d_usb: USBLC6_2SC6 [role=protection]
+
+    group connector_frontend: [j_usb, f_vbus, d_usb]
 
     net vbus_raw: [j_usb.vbus, f_vbus.in]
     net vbus_main: [f_vbus.out, vbus_out]
@@ -26,6 +28,8 @@ module USB_Input_Block:
     topology usb_dm: j_usb.dm => d_usb.dm => usb.dm
 
     require protection for j_usb
-    constrain path usb_dp esd_before_host = true
+    require return_path_required for usb
+    constrain signal usb.dp class = diffpair
+    constrain signal usb.dm class = diffpair
     place j_usb on board_edge
     place d_usb near j_usb

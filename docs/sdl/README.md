@@ -1,41 +1,53 @@
 # OpenPCB SDL Documentation (Draft v0.1)
 
 ## Purpose
-This directory defines the first draft of the OpenPCB Schematic Description Language (SDL).
-At this stage, SDL documentation is the source of truth for language intent and authoring behavior.
+This directory defines the SDL contract for the current OpenPCB phase.
+SDL is the authoritative design description. Runtime structured models are derived from SDL for parsing, validation, generation, and patch application.
 
-## Document Index
-- `overview.md`: scope, goals, and non-goals of SDL.
+## What SDL Is
+- A text language for circuit design semantics.
+- A shared layer for humans, agents, review, reuse, import/export, and version control.
+- The upstream contract for schematic generation, layout generation, validation, and controlled patching.
+
+## What SDL Is Not
+- Not the final schematic file format.
+- Not the final PCB layout file format.
+- Not the GUI storage format.
+- Not a low-level geometry language.
+
+## Documentation Map
+- `overview.md`: SDL positioning, boundaries, and phase scope in OpenPCB.
 - `terminology.md`: canonical terms used across SDL docs.
-- `object-dictionary.md`: SDL object catalog and required fields.
-- `semantic-rules.md`: meaning and normalization rules.
-- `syntax-spec.md`: lexical and structural syntax draft.
-- `examples.md`: example catalog and usage notes.
-- `authoring-guide.md`: writing practices for SDL files.
-- `schematic-generation.md`: SDL to schematic interpretation model.
-- `layout-generation.md`: SDL to layout intent handoff model.
-- `validation-guide.md`: validation layers and expected checks.
-- `patch-guide.md`: deterministic patch workflows for agents.
-- `roadmap.md`: planned milestones for SDL evolution.
-- `changelog.md`: SDL documentation change history.
-- `examples/`: minimal `.opsdl` sample files.
+- `object-dictionary.md`: authoritative object system and layer model.
+- `semantic-rules.md`: normative semantic rules and completeness checks.
+- `syntax-spec.md`: canonical engineering DSL surface syntax.
+- `examples.md`: capability matrix for `.opsdl` examples.
+- `authoring-guide.md`: practical authoring and review discipline.
+- `validation-guide.md`: layered validation strategy and minimum checks.
+- `patch-guide.md`: structured patch workflow and operation patterns.
+- `schematic-generation.md`: SDL to schematic layered generation chain.
+- `layout-generation.md`: SDL to layout layered generation chain.
+- `roadmap.md`: SDL maturation milestones.
+- `changelog.md`: SDL documentation update history.
+- `examples/`: reference SDL examples aligned to current architecture consensus.
 
 ## Recommended Reading Order
 1. `overview.md`
 2. `terminology.md`
 3. `object-dictionary.md`
-4. `syntax-spec.md`
-5. `semantic-rules.md`
-6. `authoring-guide.md`
-7. `validation-guide.md`
-8. `patch-guide.md`
-9. `schematic-generation.md`
-10. `layout-generation.md`
-11. `examples.md`
+4. `semantic-rules.md`
+5. `syntax-spec.md`
+6. `examples.md`
+7. `authoring-guide.md`
+8. `validation-guide.md`
+9. `patch-guide.md`
+10. `schematic-generation.md`
+11. `layout-generation.md`
 12. `roadmap.md`
 13. `changelog.md`
 
-## Status and Boundaries
-- This is a skeleton draft, not a stable spec release.
-- Parser, TypeScript IR, GUI, and exporter behavior are not implemented or guaranteed here.
-- Examples are intentionally compact and may omit production-level detail.
+## Current Phase Policy
+- Focus on schematic semantics and schematic/layout bridge semantics.
+- Prefer module-first and interface-first modeling.
+- Prefer structured patch/tool operations for agent edits over free-form large text rewrites.
+- Avoid over-expanding into full simulation, full thermal, full BOM optimization, or full PCB geometry semantics in v0.1 docs.
