@@ -1,0 +1,25 @@
+module "sensor_i2c_block" {
+  version "0.1"
+
+  port "VDD_3V3" { dir "in" }
+  port "GND" { dir "inout" }
+  port "I2C_SCL" { dir "inout" }
+  port "I2C_SDA" { dir "inout" }
+
+  component "u_sensor1" {
+    ref "U4"
+    type "i2c_sensor"
+    pin "VDD" {}
+    pin "GND" {}
+    pin "SCL" {}
+    pin "SDA" {}
+  }
+
+  component "r_scl_pullup" { ref "R1" type "resistor" value "4.7k" }
+  component "r_sda_pullup" { ref "R2" type "resistor" value "4.7k" }
+
+  net "VDD_3V3" { connect ["port:VDD_3V3", "U4.VDD", "R1.1", "R2.1"] }
+  net "GND" { connect ["port:GND", "U4.GND"] }
+  net "I2C_SCL" { connect ["U4.SCL", "R1.2", "port:I2C_SCL"] }
+  net "I2C_SDA" { connect ["U4.SDA", "R2.2", "port:I2C_SDA"] }
+}

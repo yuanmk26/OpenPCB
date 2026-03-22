@@ -1,0 +1,25 @@
+module "debug_block" {
+  version "0.1"
+
+  port "SWDIO" { dir "inout" }
+  port "SWCLK" { dir "in" }
+  port "NRST" { dir "inout" }
+  port "VTREF_3V3" { dir "in" }
+  port "GND" { dir "inout" }
+
+  component "j_swd1" {
+    ref "J2"
+    type "swd_header_1x5"
+    pin "SWDIO" {}
+    pin "SWCLK" {}
+    pin "NRST" {}
+    pin "VTREF" {}
+    pin "GND" {}
+  }
+
+  net "SWDIO" { connect ["J2.SWDIO", "port:SWDIO"] }
+  net "SWCLK" { connect ["J2.SWCLK", "port:SWCLK"] }
+  net "NRST" { connect ["J2.NRST", "port:NRST"] }
+  net "VTREF_3V3" { connect ["J2.VTREF", "port:VTREF_3V3"] }
+  net "GND" { connect ["J2.GND", "port:GND"] }
+}

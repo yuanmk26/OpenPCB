@@ -1,0 +1,39 @@
+module "stm32_min_system" {
+  version "0.1"
+
+  port "3V3_IN" { dir "in" }
+  port "GND" { dir "inout" }
+  port "NRST" { dir "inout" }
+  port "SWDIO" { dir "inout" }
+  port "SWCLK" { dir "in" }
+  port "I2C_SCL" { dir "inout" }
+  port "I2C_SDA" { dir "inout" }
+
+  component "mcu_u1" {
+    ref "U1"
+    type "mcu_stm32"
+    pin "VDD" {}
+    pin "VSS" {}
+    pin "NRST" {}
+    pin "SWDIO" {}
+    pin "SWCLK" {}
+  }
+
+  component "c_vdd_100n" {
+    ref "C1"
+    type "capacitor"
+    value "100nF"
+  }
+
+  net "3V3" {
+    connect ["U1.VDD", "C1.1", "port:3V3_IN"]
+  }
+
+  net "GND" {
+    connect ["U1.VSS", "C1.2", "port:GND"]
+  }
+
+  net "NRST" { connect ["U1.NRST", "port:NRST"] }
+  net "SWDIO" { connect ["U1.SWDIO", "port:SWDIO"] }
+  net "SWCLK" { connect ["U1.SWCLK", "port:SWCLK"] }
+}

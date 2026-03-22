@@ -1,0 +1,25 @@
+module "top_board_with_submodules" {
+  version "0.1"
+
+  # Draft composition idea; `use` syntax is illustrative for this stage.
+  use "usb_input_block" as "usb0"
+  use "ldo_block" as "pwr0"
+  use "stm32_min_system" as "mcu0"
+  use "debug_block" as "dbg0"
+  use "sensor_i2c_block" as "sns0"
+
+  net "GND_GLOBAL" {
+    connect ["usb0.GND", "pwr0.GND", "mcu0.GND", "dbg0.GND", "sns0.GND"]
+  }
+
+  net "VBUS_5V" {
+    connect ["usb0.VBUS_5V", "pwr0.VIN"]
+  }
+
+  net "VDD_3V3" {
+    connect ["pwr0.VOUT_3V3", "mcu0.3V3_IN", "dbg0.VTREF_3V3", "sns0.VDD_3V3"]
+  }
+
+  net "I2C_SCL" { connect ["mcu0.I2C_SCL", "sns0.I2C_SCL"] }
+  net "I2C_SDA" { connect ["mcu0.I2C_SDA", "sns0.I2C_SDA"] }
+}
