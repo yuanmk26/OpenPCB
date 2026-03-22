@@ -1,25 +1,34 @@
-module "top_board_with_submodules" {
-  version "0.1"
+interface Board_PWR:
+    vbus_5v: PowerOut
+    vdd_3v3: PowerOut
+    gnd: Ground
 
-  # Draft composition idea; `use` syntax is illustrative for this stage.
-  use "usb_input_block" as "usb0"
-  use "ldo_block" as "pwr0"
-  use "stm32_min_system" as "mcu0"
-  use "debug_block" as "dbg0"
-  use "sensor_i2c_block" as "sns0"
+module Top_Board_With_Submodules:
+    port pwr: Board_PWR
 
-  net "GND_GLOBAL" {
-    connect ["usb0.GND", "pwr0.GND", "mcu0.GND", "dbg0.GND", "sns0.GND"]
-  }
+    inst usb0: USB_Input_Block()
+    inst pwr0: LDO_Block(vout=3.3V)
+    inst mcu0: STM32_Min_System(hse=8MHz)
+    inst dbg0: Debug_Block()
+    inst sns0: Sensor_I2C_Block(address=0x48)
 
-  net "VBUS_5V" {
-    connect ["usb0.VBUS_5V", "pwr0.VIN"]
-  }
+    domain pwr_domain: Power
+    domain io_domain: MixedSignal
 
-  net "VDD_3V3" {
-    connect ["pwr0.VOUT_3V3", "mcu0.3V3_IN", "dbg0.VTREF_3V3", "sns0.VDD_3V3"]
-  }
+    net gnd_global: [pwr.gnd, usb0.gnd, pwr0.gnd, mcu0.gnd, dbg0.gnd, sns0.gnd]
+    net vbus_5v: [usb0.vbus_out, pwr0.vin, pwr.vbus_5v]
+    net vdd_3v3: [pwr0.vout, mcu0.vdd_3v3, dbg0.swd.vtref, sns0.vdd, pwr.vdd_3v3]
 
-  net "I2C_SCL" { connect ["mcu0.I2C_SCL", "sns0.I2C_SCL"] }
-  net "I2C_SDA" { connect ["mcu0.I2C_SDA", "sns0.I2C_SDA"] }
-}
+    connect usb0.vbus_out -> [pwr0.vin, pwr.vbus_5v]
+    connect pwr0.vout -> [mcu0.vdd_3v3, dbg0.swd.vtref, sns0.vdd, pwr.vdd_3v3]
+    tie pwr.gnd = gnd_global
+
+    map mcu0.swd -> dbg0.swd
+    map mcu0.i2c0 -> sns0.i2c
+
+    topology i2c_scl: mcu0.i2c0.scl => sns0.i2c.scl
+    topology i2c_sda: mcu0.i2c0.sda => sns0.i2c.sda
+
+    require bringup_ready for [pwr0, mcu0, dbg0]
+    constrain domain pwr_domain isolated_from io_domain = false
+    place [usb0, dbg0] near board_edge

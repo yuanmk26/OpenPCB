@@ -1,39 +1,30 @@
-module "stm32_min_system" {
-  version "0.1"
+interface SWD:
+    swdio: InOut
+    swclk: Input
+    nreset: InOut
+    vtref: PowerIn
 
-  port "3V3_IN" { dir "in" }
-  port "GND" { dir "inout" }
-  port "NRST" { dir "inout" }
-  port "SWDIO" { dir "inout" }
-  port "SWCLK" { dir "in" }
-  port "I2C_SCL" { dir "inout" }
-  port "I2C_SDA" { dir "inout" }
+interface I2C:
+    scl: InOut
+    sda: InOut
 
-  component "mcu_u1" {
-    ref "U1"
-    type "mcu_stm32"
-    pin "VDD" {}
-    pin "VSS" {}
-    pin "NRST" {}
-    pin "SWDIO" {}
-    pin "SWCLK" {}
-  }
+module STM32_Min_System(hse=8MHz):
+    port vdd_3v3: PowerIn
+    port gnd: Ground
+    port swd: SWD
+    port i2c0: I2C
 
-  component "c_vdd_100n" {
-    ref "C1"
-    type "capacitor"
-    value "100nF"
-  }
+    inst u_mcu: STM32F103C8(hse=hse) [role=controller]
+    inst c_vdd: C(value=100nF) [role=decoupling]
 
-  net "3V3" {
-    connect ["U1.VDD", "C1.1", "port:3V3_IN"]
-  }
+    net vdd_main: [vdd_3v3, u_mcu.vdd, c_vdd.1]
+    net gnd_main: [gnd, u_mcu.vss, c_vdd.2]
 
-  net "GND" {
-    connect ["U1.VSS", "C1.2", "port:GND"]
-  }
+    connect vdd_3v3 -> [u_mcu.vdd, c_vdd.1]
+    connect gnd -> [u_mcu.vss, c_vdd.2]
+    map u_mcu.swd -> swd
+    map u_mcu.i2c1 -> i2c0
 
-  net "NRST" { connect ["U1.NRST", "port:NRST"] }
-  net "SWDIO" { connect ["U1.SWDIO", "port:SWDIO"] }
-  net "SWCLK" { connect ["U1.SWCLK", "port:SWCLK"] }
-}
+    require decoupling for u_mcu
+    constrain clock u_mcu.hse = hse
+    place c_vdd near u_mcu

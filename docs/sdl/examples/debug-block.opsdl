@@ -1,25 +1,18 @@
-module "debug_block" {
-  version "0.1"
+interface SWD:
+    swdio: InOut
+    swclk: Input
+    nreset: InOut
+    vtref: PowerIn
 
-  port "SWDIO" { dir "inout" }
-  port "SWCLK" { dir "in" }
-  port "NRST" { dir "inout" }
-  port "VTREF_3V3" { dir "in" }
-  port "GND" { dir "inout" }
+module Debug_Block:
+    port swd: SWD
+    port gnd: Ground
 
-  component "j_swd1" {
-    ref "J2"
-    type "swd_header_1x5"
-    pin "SWDIO" {}
-    pin "SWCLK" {}
-    pin "NRST" {}
-    pin "VTREF" {}
-    pin "GND" {}
-  }
+    inst j_swd: SWD_Header_2x5 [role=debug_connector]
+    expose j_swd.swd as swd
 
-  net "SWDIO" { connect ["J2.SWDIO", "port:SWDIO"] }
-  net "SWCLK" { connect ["J2.SWCLK", "port:SWCLK"] }
-  net "NRST" { connect ["J2.NRST", "port:NRST"] }
-  net "VTREF_3V3" { connect ["J2.VTREF", "port:VTREF_3V3"] }
-  net "GND" { connect ["J2.GND", "port:GND"] }
-}
+    net gnd_ref: [j_swd.gnd, gnd]
+    connect j_swd.gnd -> gnd
+
+    require accessible for j_swd
+    place j_swd near board_edge

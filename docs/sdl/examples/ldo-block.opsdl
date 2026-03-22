@@ -1,23 +1,20 @@
-module "ldo_block" {
-  version "0.1"
+module LDO_Block(vout=3.3V):
+    port vin: PowerIn
+    port gnd: Ground
+    port vout: PowerOut
 
-  port "VIN" { dir "in" }
-  port "VOUT_3V3" { dir "out" }
-  port "GND" { dir "inout" }
+    inst u_ldo: AMS1117(vout=vout) [role=regulator]
+    inst c_in: C(value=10uF)
+    inst c_out: C(value=22uF)
 
-  component "u_ldo1" {
-    ref "U2"
-    type "ldo_regulator"
-    value "3.3V"
-    pin "IN" {}
-    pin "OUT" {}
-    pin "GND" {}
-  }
+    net vin_in: [vin, u_ldo.vin, c_in.1]
+    net vout_main: [u_ldo.vout, c_out.1, vout]
+    net gnd_ref: [gnd, u_ldo.gnd, c_in.2, c_out.2]
 
-  component "c_in_10u" { ref "C2" type "capacitor" value "10uF" }
-  component "c_out_10u" { ref "C3" type "capacitor" value "10uF" }
+    connect vin -> [u_ldo.vin, c_in.1]
+    connect vout -> [u_ldo.vout, c_out.1]
+    connect gnd -> [u_ldo.gnd, c_in.2, c_out.2]
 
-  net "VIN" { connect ["port:VIN", "U2.IN", "C2.1"] }
-  net "VOUT_3V3" { connect ["U2.OUT", "C3.1", "port:VOUT_3V3"] }
-  net "GND" { connect ["port:GND", "U2.GND", "C2.2", "C3.2"] }
-}
+    require decoupling for u_ldo
+    constrain net vout_main ripple < 50mV
+    place [u_ldo, c_in, c_out] compact

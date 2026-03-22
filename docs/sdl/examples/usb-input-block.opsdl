@@ -1,26 +1,31 @@
-module "usb_input_block" {
-  version "0.1"
+interface USB2_Device:
+    dp: InOut
+    dm: InOut
+    vbus: PowerIn
+    gnd: Ground
 
-  port "VBUS_5V" { dir "out" }
-  port "USB_D+" { dir "inout" }
-  port "USB_D-" { dir "inout" }
-  port "GND" { dir "inout" }
+module USB_Input_Block:
+    port usb: USB2_Device
+    port vbus_out: PowerOut
+    port gnd: Ground
 
-  component "j_usb1" {
-    ref "J1"
-    type "usb_c_receptacle"
-    pin "VBUS" {}
-    pin "D+" {}
-    pin "D-" {}
-    pin "GND" {}
-  }
+    inst j_usb: USB_C_Receptacle [role=external_connector]
+    inst f_vbus: Resettable_Fuse [role=inrush_limit]
+    inst d_usb: USBLC6_2SC6 [role=protection]
 
-  component "fuse_f1" { ref "F1" type "ptc_fuse" }
-  component "esd_u1" { ref "U3" type "usb_esd_array" }
+    net vbus_raw: [j_usb.vbus, f_vbus.in]
+    net vbus_main: [f_vbus.out, vbus_out]
+    net gnd_main: [j_usb.gnd, d_usb.gnd, gnd]
 
-  net "VBUS_RAW" { connect ["J1.VBUS", "F1.1"] }
-  net "VBUS_5V" { connect ["F1.2", "port:VBUS_5V"] }
-  net "USB_D+" { connect ["J1.D+", "U3.D+", "port:USB_D+"] }
-  net "USB_D-" { connect ["J1.D-", "U3.D-", "port:USB_D-"] }
-  net "GND" { connect ["J1.GND", "U3.GND", "port:GND"] }
-}
+    connect usb <-> j_usb.usb2
+    connect j_usb.vbus -> f_vbus.in
+    connect f_vbus.out -> vbus_out
+    connect j_usb.gnd -> gnd
+
+    topology usb_dp: j_usb.dp => d_usb.dp => usb.dp
+    topology usb_dm: j_usb.dm => d_usb.dm => usb.dm
+
+    require protection for j_usb
+    constrain path usb_dp esd_before_host = true
+    place j_usb on board_edge
+    place d_usb near j_usb

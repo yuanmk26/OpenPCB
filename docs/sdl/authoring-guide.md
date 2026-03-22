@@ -5,22 +5,28 @@ This guide provides practical authoring rules for engineers and agents writing `
 
 ## Authoring Principles
 - Keep one coherent module intent per file.
-- Use stable object ids to support deterministic patching.
-- Prefer explicit net and port names over implicit defaults.
+- Keep SDL as design expression DSL, not as a serialized internal config format.
+- Prefer interface-first boundaries and direct connectivity statements.
+- Use stable instance names and explicit intent statements to support deterministic patching.
 
 ## Style Conventions
-- Use concise and consistent naming (`U1`, `R1`, `NET_3V3`).
-- Keep comments factual and close to the related block.
-- Group related components and nets to improve reviewability.
+- Use indentation-based statement style.
+- Do not use `module "name" {}` and heavy `key "value"` surfaces as primary authoring style.
+- Keep connectivity obvious with `connect`, `tie`, and `topology`.
+- Separate wiring intent from requirement and placement intent (`require`, `constrain`, `place`).
+- Prefer meaningful names for modules/interfaces/instances over library-detail-heavy snippets.
 
 ## Recommended Workflow
-1. Define module metadata.
-2. Add components and key pins.
-3. Add ports and nets.
-4. Add constraints and variant notes.
-5. Run validation and normalize formatting.
+1. Define interfaces and module signature (including parameters if needed).
+2. Declare ports and instantiate parts/submodules with `inst`.
+3. Express connectivity with `connect`; add explicit `net` names only where identity matters.
+4. Add `map`/`expose` for composition boundaries and interface binding.
+5. Add `topology`, `constrain`, `require`, `place`, and `domain` intent statements.
+6. Run validation and normalize ordering for deterministic diffs.
 
 ## Review Checklist
-- Required fields present for each object type.
-- No unresolved endpoints in nets.
-- No contradictory constraints.
+- Interfaces and ports communicate module boundaries clearly.
+- `connect` lines make electrical relationships immediately understandable.
+- `topology` statements are used where path order is important.
+- `constrain` and `require` are not mixed semantically.
+- Placement and requirement intent are explicit and reviewable.

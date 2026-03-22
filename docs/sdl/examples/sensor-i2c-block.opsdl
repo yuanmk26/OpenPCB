@@ -1,25 +1,26 @@
-module "sensor_i2c_block" {
-  version "0.1"
+interface I2C:
+    scl: InOut
+    sda: InOut
 
-  port "VDD_3V3" { dir "in" }
-  port "GND" { dir "inout" }
-  port "I2C_SCL" { dir "inout" }
-  port "I2C_SDA" { dir "inout" }
+module Sensor_I2C_Block(address=0x48):
+    port i2c: I2C
+    port vdd: PowerIn
+    port gnd: Ground
 
-  component "u_sensor1" {
-    ref "U4"
-    type "i2c_sensor"
-    pin "VDD" {}
-    pin "GND" {}
-    pin "SCL" {}
-    pin "SDA" {}
-  }
+    inst u_sensor: I2C_Temp_Sensor(addr=address) [role=sensor]
+    inst r_scl: R(value=4.7k)
+    inst r_sda: R(value=4.7k)
 
-  component "r_scl_pullup" { ref "R1" type "resistor" value "4.7k" }
-  component "r_sda_pullup" { ref "R2" type "resistor" value "4.7k" }
+    net vdd_main: [vdd, u_sensor.vdd, r_scl.1, r_sda.1]
+    net gnd_main: [gnd, u_sensor.gnd]
+    net scl_main: [u_sensor.scl, r_scl.2, i2c.scl]
+    net sda_main: [u_sensor.sda, r_sda.2, i2c.sda]
 
-  net "VDD_3V3" { connect ["port:VDD_3V3", "U4.VDD", "R1.1", "R2.1"] }
-  net "GND" { connect ["port:GND", "U4.GND"] }
-  net "I2C_SCL" { connect ["U4.SCL", "R1.2", "port:I2C_SCL"] }
-  net "I2C_SDA" { connect ["U4.SDA", "R2.2", "port:I2C_SDA"] }
-}
+    connect vdd -> [u_sensor.vdd, r_scl.1, r_sda.1]
+    connect gnd -> u_sensor.gnd
+    connect i2c.scl -> [u_sensor.scl, r_scl.2]
+    connect i2c.sda -> [u_sensor.sda, r_sda.2]
+
+    require pullup for i2c
+    constrain bus i2c frequency <= 400kHz
+    place [u_sensor, r_scl, r_sda] compact

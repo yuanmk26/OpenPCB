@@ -1,69 +1,95 @@
 # SDL Object Dictionary
 
 ## Purpose
-This dictionary defines first-draft SDL object types and required fields.
-It is a semantic contract, not an implementation schema.
+This dictionary defines SDL semantic entities and statements for the engineering DSL surface.
+It is not a low-level IR field table.
+
+## Language-Shape Positioning
+- SDL entities are expressed as design statements (`module`, `interface`, `inst`, `connect`, `topology`, `require`).
+- Example style should prioritize design readability and review, not config serialization style.
+- Library internals (symbol/pad/pin metadata) may exist, but they are not the primary authoring surface.
 
 ## Module
-Required fields:
-- `name`: unique module identifier.
-- `version`: module document version.
+Represents a first-class design unit.
 
-Common optional fields:
-- `meta`: author, project, tags.
-- `params`: parameter set used by instances or constraints.
+Core semantics:
+- Has a unique module name.
+- May be parameterized (`module Name(param=value)`).
+- Defines ports, instances, and intent statements.
 
-## Component
-Required fields:
-- `id`: stable object id.
-- `ref`: reference designator (for example `U1`, `C4`).
-- `type`: logical part category.
+## Interface
+Represents reusable port bundles and protocol contracts.
 
-Common optional fields:
-- `value`: human-readable value.
-- `footprint`: layout package hint.
-- `pins`: explicit pin map for symbolic connectivity.
-
-## Pin
-Required fields:
-- `name`: pin identifier inside component scope.
-
-Common optional fields:
-- `function`: semantic role such as `power_in`, `gpio`, `analog_in`.
-- `electrical`: electrical type classification.
+Core semantics:
+- Defines typed members (`tx: Output`, `gnd: Ground`).
+- Enables interface-first module boundaries.
+- Can be used by ports and exposed instance interfaces.
 
 ## Port
-Required fields:
-- `name`: module-level external interface name.
-- `dir`: direction (`in`, `out`, `inout`, `passive`).
+Represents module external connection points.
 
-Common optional fields:
-- `domain`: signal domain hint (`power`, `digital`, `analog`).
+Core semantics:
+- Declared as `port name: Type` where type can be scalar direction/electrical type or named interface.
+- May participate in `connect`, `tie`, `map`, and `topology`.
+
+## Instance (`inst`)
+Represents an instantiated module or library part.
+
+Core semantics:
+- Declared as `inst id: Type(args...)`.
+- Can carry role tags (`[role=...]`) for review and agent operations.
+- Exposes endpoints and sub-interfaces used in connectivity statements.
 
 ## Net
-Required fields:
-- `name`: net identifier.
-- `connect`: list of endpoints (`ref.pin` or `port:name`).
+Represents an explicit named electrical grouping in concise statement form.
 
-Common optional fields:
-- `class`: routing class hint.
-- `voltage`: nominal voltage metadata.
+Core semantics:
+- Declared as `net name: [endpoint_a, endpoint_b, ...]`.
+- Used when explicit net identity is required for rules, diagnostics, and review.
 
-## Constraint
-Required fields:
-- `id`: stable constraint identifier.
-- `target`: object reference or selector.
-- `rule`: rule key string.
+## Connect
+Represents direct connectivity action.
 
-Common optional fields:
-- `value`: parameterized rule value.
-- `severity`: `error` or `warning`.
+Core semantics:
+- Forward fanout form: `connect a -> [b, c]`.
+- Bidirectional form: `connect a <-> b`.
+- Should be preferred for immediate readability of "what connects to what".
 
-## Variant
-Required fields:
-- `name`: variant id.
-- `changes`: list of controlled modifications.
+## Expose
+Represents interface export from instance scope to module scope.
+
+Core semantics:
+- Declared as `expose inst.path as module_port_or_interface`.
+
+## Tie
+Represents electrical equivalence between named signals or nets.
+
+Core semantics:
+- Declared as `tie lhs = rhs`.
+
+## Topology
+Represents ordered connectivity path intent.
+
+Core semantics:
+- Declared as `topology name: a => b => c`.
+- Used when ordering matters and is not captured by raw connectivity alone.
+
+## Constrain and Require
+Two distinct intent categories:
+- `constrain`: hard machine-checkable rule.
+- `require`: engineering requirement intent, normative but potentially profile-dependent for enforcement.
+
+## Place and Domain
+- `place`: human-readable placement intent for components or groups.
+- `domain`: named functional/electrical context used for partitioning and rule targeting.
+
+## Map
+Represents interface/port mapping across module boundaries.
+
+Core semantics:
+- Declared as `map source -> target`.
+- Commonly used in top-level composition modules.
 
 ## Stability Notes
-- Required fields are the minimum contract for this draft.
-- Additional fields are allowed if documented and validated consistently.
+- This dictionary defines semantic intent for v0.1 draft and may refine wording in later versions.
+- Any future parser/IR representation must preserve these statement-level meanings.
