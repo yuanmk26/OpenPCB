@@ -14,11 +14,11 @@ These instructions apply to the whole repository.
    - 影响范围
    - 验证结果
    - 下一步建议
-4. If there is no code/file change, still add a change record and mark it `no-code-change`.
+4. If there is no code/file change, do not need to add changlog to `docs/changes`.
 
 ## Git Submission Rules
 
-1. After completing each task, run `git add` + `git commit` + `git push` by default.
+1. After create or modify any files, run `git add` + `git commit` + `git push` by default.
 2. If push fails, keep the error output and report the reason clearly.
 3. If the user explicitly requests not to commit/push, follow the user request as an exception.
 
