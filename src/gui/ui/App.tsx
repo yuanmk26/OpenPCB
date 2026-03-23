@@ -1,5 +1,5 @@
 import { AppHeader } from "./components/shell/AppHeader";
-import { Sidebar } from "./components/shell/Sidebar";
+import { ChatColumn } from "./components/shell/ChatColumn";
 import { Workspace } from "./components/workspace/Workspace";
 import { RightPanel } from "./components/shell/RightPanel";
 
@@ -8,7 +8,7 @@ export default function App() {
     <div className="app-shell">
       <AppHeader />
       <div className="app-body">
-        <Sidebar />
+        <ChatColumn />
         <Workspace />
         <RightPanel />
       </div>
