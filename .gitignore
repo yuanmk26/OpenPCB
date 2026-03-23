@@ -210,3 +210,6 @@ __marimo__/
 # Local demo workspace (do not commit test runs/config/logs)
 tests/demo/
 
+# Node.js
+node_modules/
+

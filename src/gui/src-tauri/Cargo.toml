@@ -1,0 +1,19 @@
+[package]
+name = "openpcb_gui"
+version = "0.1.0"
+description = "OpenPCB Desktop GUI Skeleton"
+authors = ["OpenPCB Contributors"]
+license = "Apache-2.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+strip = true
