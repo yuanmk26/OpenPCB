@@ -18,9 +18,11 @@ These instructions apply to the whole repository.
 
 ## Git Submission Rules
 
-1. After create or modify any files, run `git add` + `git commit` + `git push` by default.
-2. If push fails, keep the error output and report the reason clearly.
-3. If the user explicitly requests not to commit/push, follow the user request as an exception.
+1. For every single file that is newly added or modified, a full git submission workflow is required by default.
+2. The required workflow for each changed file is: `git add <file>` + `git commit` + `git push`.
+3. If a task changes multiple files, do not skip submission workflow for any changed file.
+4. If push fails, keep the error output and report the reason clearly.
+5. If the user explicitly requests not to commit/push, follow the user request as an exception.
 
 ## Notes
 
