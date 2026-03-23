@@ -1,178 +1,135 @@
-# OpenPCB Agent Architecture (Current + Target)
+﻿# OpenPCB Agent Architecture (Current + Target)
 
 ## Background
 
-OpenPCB Agent handles conversation, intent routing, and task execution orchestration.
-Current implementation already has a conversation-first entry, and architecture collection is now unified into a schema-gap-driven path.
+OpenPCB agent orchestration is being refocused from a single-agent, task-type driven loop to a `pi-mono`-based `agent-team` model.
 
-This document tracks architecture around:
+This document defines:
 
-- `mode` as current PCB work perspective
-- `action` as execution verb
-- `toolchain` as runtime implementation detail
+- Current architecture and constraints
+- Target `Master Agent + Worker Agents` collaboration model
+- Concept-level collaboration contracts and flow
 
 ## Current
 
-Implementation status: conversation shell and schema gate `已实现`; mode/action/toolchain full decoupling `进行中`.
+Implementation status: `已实现` (single-agent baseline), `进行中` (mode/action decoupling).
 
-### Current layering
+### Current architecture shape
 
-- Conversation Orchestrator: `chat` REPL + slash commands + confirmation
-- Requirement Gate Layer:
-  - `RequirementClassifier` (`board_class + board_family`)
-  - `ArchitectureSchemaCollector` (template-driven gap engine)
-  - `SchemaQuestionGenerator` (LLM dynamic question wording)
-- Runtime: `run(task_type, input_payload, options)`
-- Task execution chain: `PLAN / BUILD / CHECK / EDIT`
-- Domain adapters: parser, planner, builder, checker, executor
+- Conversation entry is available via interactive shell.
+- Runtime still centers on `task_type` chains (`PLAN / BUILD / CHECK / EDIT`).
+- Requirement and architecture collection already use schema-gap style collection.
+- Session persists mode and stage-related metadata.
 
-### Current execution model
+### Current limitations
 
-- Fixed runtime loop by `task_type`
-- Trace logs written to `logs/agent-run-*.jsonl`
-- Board-design conversation path:
-  - classify board type
-  - enter schema gap collection (single active field per round)
-  - ask user with `1/2/3/4` protocol (3 template options + custom)
-  - allow `plan` only when `architecture_ready=True`
-
-### Current delivered capabilities
-
-- `openpcb` default enters interactive shell
-- Session mode persistence and restore (`current_mode`)
-- Pending flow stages:
-  - `classified`
-  - `brief_collecting` (name retained for compatibility, behavior is schema-driven)
-  - `ready_to_plan`
-- Stage status standard output:
-  - `current_stage`
-  - `architecture_ready`
-  - `schematic_ready`
-  - `layout_ready`
-  - `missing_fields`
-  - `assumptions`
-- Plan metadata injection:
-  - `project.metadata.classification`
-  - `project.metadata.architecture_brief`
-  - `project.metadata.architecture_brief_sources`
-  - `project.metadata.architecture_stage_status`
-  - `project.metadata.architecture_brief_template_id`
-  - `project.metadata.architecture_brief_template_version`
-
-### Current problems
-
-- Runtime is still `task_type`-centric; mode policy is not fully extracted
-- Conversation routing logic is still embedded in `chat.py`
-- Session field names still contain historical `brief_*` prefixes
+- Orchestration remains mostly single-agent and task-centric.
+- Worker specialization and delegation boundaries are not explicit.
+- The conversation layer still carries part of routing logic.
 
 ## Target
 
 Implementation status: `进行中`.
 
-### Core principle
+### Core direction
 
-The agent decides:
+Use `pi-mono` as the orchestration base and build an `agent-team` pattern:
 
-1. chat vs PCB work
-2. target `mode`
-3. target `action` in that mode
-4. policy-selected toolchain
+- `Master Agent` talks to user and owns final output.
+- `Worker Agents` execute domain-specific tasks.
+- SDL remains the upstream semantic source for circuit intent.
 
-Rule: `mode != action != tool`.
+### Master Agent responsibilities
 
-### Mode
+- User conversation and intent clarification
+- Task decomposition and dispatch
+- Worker assignment and dependency ordering
+- Result aggregation and conflict arbitration
+- Final user-facing response generation
 
-`mode` is work perspective, not direct tool binding.
+### Worker Agents (MVP)
 
-Current and planned set:
+1. `Project-Info Agent`
+- Maintains `docs/project/knowledge-base.md`
+- Synchronizes project facts from architecture, SDL, and project docs
+- Rejects undocumented assumptions and prefers repository-grounded facts
 
-- `system_architecture`
-- `schematic_design`
-- `schematic_check`
-- `placement`
-- `power_layout`
-- `routing`
+2. `SDL Agent`
+- Updates SDL-level circuit semantic descriptions
+- Performs structured SDL updates and consistency checks
+- Does not generate schematic drawing artifacts directly
 
-### Action
+3. `Schematic Agent`
+- Transforms SDL-derived intent into schematic expression/artifacts
+- Reports unresolved semantic gaps back to Master Agent
+- Current phase note: schematic semantic architecture is still being refined
 
-Stable verbs:
+## Collaboration Contracts (Concept-Level)
 
-- `analyze`
-- `plan`
-- `generate`
-- `check`
-- `edit`
-- `review`
-- `export`
+The team contract is language-agnostic at this stage.
 
-### Toolchain
+### TaskEnvelope
 
-Policy maps `(mode, action)` to executable chain.
+```text
+TaskEnvelope {
+  task_id,
+  agent_role,
+  goal,
+  inputs,
+  constraints,
+  expected_output
+}
+```
 
-## Proposed components
+### WorkerResult
 
-### 1) Conversation Router
+```text
+WorkerResult {
+  task_id,
+  status,
+  artifacts,
+  summary,
+  open_questions
+}
+```
 
-- chat vs PCB routing
-- clarification/confirmation decision
+### Contract constraints
 
-### 2) Schema Gap Engine
-
-- load board-class template from `templates/architecture_fields/*.json`
-- rank missing fields by `P0 -> P1 -> P2`
-- expose single active question each round
-
-### 3) Session State
-
-- persist `current_mode`
-- persist pending flow metadata
-- persist architecture values/sources/stage status/template info
-
-### 4) Action Resolver
-
-- resolve executable action under current mode
-
-### 5) Mode Policy
-
-- bind `(mode, action)` to toolchain
-
-### 6) Runtime Executor
-
-- execute toolchain with unified trace and retry
+- Only Master Agent is allowed to produce final user-visible conclusions.
+- Worker Agents return structured execution results and open questions.
+- Cross-worker conflicts are resolved by Master Agent before final response.
 
 ## Target data flow
 
 ```mermaid
 flowchart TD
-    U[User Message] --> R[Conversation Router]
-    R --> D{Chat or PCB work}
-    D -->|Chat| C[Chat Agent Reply]
-    D -->|PCB work| CL[Requirement Classifier]
-    CL --> SG[Schema Gap Engine]
-    SG --> QG[LLM Question Generator]
-    QG --> S[Session State]
-    S --> A[Action Resolver]
-    A --> P[Mode Policy]
-    P --> T[Toolchain]
-    T --> X[Runtime Executor]
-    X --> O[Result + State Update]
+    U[User] --> M[Master Agent]
+    M --> D{Task decomposition}
+
+    D --> P[Project-Info Agent]
+    D --> S[SDL Agent]
+    D --> C[Schematic Agent]
+
+    P --> R1[WorkerResult]
+    S --> R2[WorkerResult]
+    C --> R3[WorkerResult]
+
+    R1 --> A[Master Agent Aggregation]
+    R2 --> A
+    R3 --> A
+
+    A --> O[Final user-visible response]
 ```
 
-## Test mapping
+## Relationship with SDL stack
 
-Current implemented tests:
-
-- `tests/agent/test_session.py`
-- `tests/agent/test_classifier.py`
-- `tests/agent/test_architecture_schema_collector.py`
-- `tests/agent/test_schema_question_generator.py`
-- `tests/agent/test_no_legacy_brief_imports.py`
-- `tests/cli/test_architecture_schema_collector_flow.py`
-- `tests/cli/test_chat.py`
+- SDL docs under `docs/sdl/` remain the semantic authority for design intent.
+- `SDL Agent` and `Schematic Agent` consume and produce artifacts consistent with SDL semantics.
+- This document does not redefine SDL syntax or semantic rules.
 
 ## Next steps
 
-1. Extract router logic from `chat.py` into dedicated module.
-2. Complete `mode/action/toolchain` policy resolution in runtime.
-3. Migrate session naming from `brief_*` to `schema_*` with compatibility shim.
-4. Add stage-aware entry gates for schematic/layout handoff.
+1. Define runtime-level delegation policy from Master Agent to worker roles.
+2. Add observable task lifecycle states for worker execution tracking.
+3. Introduce failure-handling policy for partial worker completion.
+4. Incrementally refine schematic semantic contracts in SDL-related docs.
