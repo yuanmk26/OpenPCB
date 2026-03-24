@@ -224,20 +224,29 @@ export function SchematicPreview() {
     }
 
     setViewport((current) => {
-      const nextScale = Math.min(Math.max(Number((current.scale * multiplier).toFixed(3)), 0.25), 4);
+      const contentFitted = fitViewportToContent(
+        activePage.contentBounds ?? activePage.bounds,
+        activePage.bounds,
+        containerSize
+      );
+      const zoomingIn = multiplier > 1;
+      const useContentBase = current.mode === "page" && zoomingIn;
+      const baseScale = useContentBase ? contentFitted.scale : current.scale;
+      const basePan = useContentBase ? contentFitted.pan : current.pan;
+      const nextScale = Math.min(Math.max(Number((baseScale * multiplier).toFixed(3)), 0.25), 4);
       const center = {
         x: containerSize.width / 2,
         y: containerSize.height / 2
       };
       const worldCenter =
-        current.mode === "page" && activePage.contentBounds
+        useContentBase && activePage.contentBounds
           ? {
               x: activePage.contentBounds.x + activePage.contentBounds.width / 2,
               y: activePage.contentBounds.y + activePage.contentBounds.height / 2
             }
           : {
-              x: (center.x - current.pan.x) / current.scale,
-              y: (center.y - current.pan.y) / current.scale
+              x: (center.x - basePan.x) / baseScale,
+              y: (center.y - basePan.y) / baseScale
             };
       const nextPan = {
         x: center.x - worldCenter.x * nextScale,
