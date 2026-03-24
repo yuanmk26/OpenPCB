@@ -155,16 +155,39 @@ export function SchematicPreview() {
       return;
     }
 
-    const fitted =
-      viewport.mode === "page"
-        ? fitViewportToPage(activePage.bounds, containerSize)
-        : fitViewportToContent(activePage.contentBounds ?? activePage.bounds, activePage.bounds, containerSize);
-    setViewport((current) => ({
-      pageId: activePage.pageId,
-      scale: fitted.scale,
-      pan: fitted.pan,
-      mode: current.mode
-    }));
+    setViewport((current) => {
+      const pageChanged = current.pageId !== activePage.pageId;
+
+      if (pageChanged) {
+        const fitted = fitViewportToPage(activePage.bounds, containerSize);
+        return {
+          pageId: activePage.pageId,
+          scale: fitted.scale,
+          pan: fitted.pan,
+          mode: "page"
+        };
+      }
+
+      if (current.mode === "manual") {
+        return {
+          ...current,
+          pageId: activePage.pageId,
+          pan: clampViewportPan(activePage, containerSize, current.scale, current.pan)
+        };
+      }
+
+      const fitted =
+        current.mode === "page"
+          ? fitViewportToPage(activePage.bounds, containerSize)
+          : fitViewportToContent(activePage.contentBounds ?? activePage.bounds, activePage.bounds, containerSize);
+
+      return {
+        pageId: activePage.pageId,
+        scale: fitted.scale,
+        pan: fitted.pan,
+        mode: current.mode
+      };
+    });
   }, [activePage?.pageId, activePage?.size.height, activePage?.size.width, containerSize.height, containerSize.width, viewport.mode]);
 
   function handleFitContent() {
@@ -224,7 +247,8 @@ export function SchematicPreview() {
       return {
         ...current,
         scale: nextScale,
-        pan: clampViewportPan(activePage, containerSize, nextScale, nextPan)
+        pan: clampViewportPan(activePage, containerSize, nextScale, nextPan),
+        mode: "manual"
       };
     });
   }
@@ -261,7 +285,8 @@ export function SchematicPreview() {
       pan: clampViewportPan(activePage, containerSize, current.scale, {
         x: current.pan.x + deltaX,
         y: current.pan.y + deltaY
-      })
+      }),
+      mode: "manual"
     }));
   }
 
@@ -317,10 +342,10 @@ export function SchematicPreview() {
           >
             Debug
           </button>
-          <button type="button" className="schematic-chip" onClick={() => handleZoom(1.2)}>
+          <button type="button" className="schematic-chip" onClick={() => handleZoom(1.1)}>
             Zoom In
           </button>
-          <button type="button" className="schematic-chip" onClick={() => handleZoom(1 / 1.2)}>
+          <button type="button" className="schematic-chip" onClick={() => handleZoom(1 / 1.1)}>
             Zoom Out
           </button>
           <button type="button" className="schematic-chip" onClick={handleFitContent}>
