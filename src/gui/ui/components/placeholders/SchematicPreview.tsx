@@ -4,13 +4,14 @@ import { loadSchematicGeometry } from "@/lib/schematicPreview";
 import type {
   GraphicPrimitive,
   Point,
+  ResolvedPin,
   SchematicPageScene,
   SchematicScene,
   SymbolDefinition,
   ViewportState
 } from "@/types/schematic";
 
-const GRID_STEP = 40;
+const GRID_STEP = 20;
 
 export function SchematicPreview() {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -131,16 +132,12 @@ export function SchematicPreview() {
   function handleZoom(multiplier: number) {
     setViewport((current) => ({
       ...current,
-      scale: Math.min(Math.max(Number((current.scale * multiplier).toFixed(3)), 0.2), 4)
+      scale: Math.min(Math.max(Number((current.scale * multiplier).toFixed(3)), 0.25), 4)
     }));
   }
 
   function handleReset() {
-    setViewport((current) => ({
-      ...current,
-      scale: 1,
-      pan: { x: 32, y: 32 }
-    }));
+    handleFitToPage();
   }
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
@@ -183,7 +180,7 @@ export function SchematicPreview() {
       <section className="schematic-viewer">
         <div className="schematic-viewer-empty">
           <h3>Loading Preview</h3>
-          <p>Preparing the geometry scene for SVG rendering.</p>
+          <p>Preparing the schematic page and symbol scene.</p>
         </div>
       </section>
     );
@@ -223,9 +220,6 @@ export function SchematicPreview() {
             Zoom Out
           </button>
           <button type="button" className="schematic-chip" onClick={handleReset}>
-            Reset
-          </button>
-          <button type="button" className="schematic-chip" onClick={handleFitToPage}>
             Fit
           </button>
         </div>
@@ -241,31 +235,29 @@ export function SchematicPreview() {
         >
           <defs>
             <pattern id="schematic-grid" width={GRID_STEP} height={GRID_STEP} patternUnits="userSpaceOnUse">
-              <path d={`M ${GRID_STEP} 0 L 0 0 0 ${GRID_STEP}`} fill="none" stroke="#1d3045" strokeWidth="1" />
+              <path d={`M ${GRID_STEP} 0 L 0 0 0 ${GRID_STEP}`} fill="none" stroke="#eef2f7" strokeWidth="0.6" />
             </pattern>
           </defs>
+          <rect x={0} y={0} width={containerSize.width} height={containerSize.height} fill="#d5dbe3" />
           <g transform={`translate(${viewport.pan.x} ${viewport.pan.y}) scale(${viewport.scale})`}>
             <rect
               x={0}
               y={0}
               width={activePage.size.width}
               height={activePage.size.height}
-              fill="#0f1720"
-              stroke="#355170"
-              strokeWidth={2}
-              rx={16}
+              fill="#fdfdfc"
+              stroke="#6b7280"
+              strokeWidth={1.2}
             />
             <rect
-              x={0}
-              y={0}
-              width={activePage.size.width}
-              height={activePage.size.height}
+              x={18}
+              y={18}
+              width={activePage.size.width - 36}
+              height={activePage.size.height - 36}
               fill="url(#schematic-grid)"
-              opacity={0.65}
+              opacity={0.55}
             />
-            <text x={30} y={44} fill="#8ea3ba" fontSize={22}>
-              {activePage.title}
-            </text>
+            <PageFrame page={activePage} />
             <PageWires page={activePage} />
             <PageJunctions page={activePage} />
             <PageSymbols page={activePage} />
@@ -285,6 +277,37 @@ export function SchematicPreview() {
   );
 }
 
+function PageFrame({ page }: { page: SchematicPageScene }) {
+  const titleBoxWidth = 340;
+  const titleBoxHeight = 90;
+  const titleBoxX = page.size.width - titleBoxWidth - 28;
+  const titleBoxY = page.size.height - titleBoxHeight - 24;
+
+  return (
+    <g className="schematic-layer-frame">
+      <rect x={22} y={22} width={page.size.width - 44} height={page.size.height - 44} fill="none" stroke="#9ca3af" strokeWidth={0.8} />
+      <rect x={titleBoxX} y={titleBoxY} width={titleBoxWidth} height={titleBoxHeight} fill="none" stroke="#6b7280" strokeWidth={0.8} />
+      <line x1={titleBoxX} y1={titleBoxY + 28} x2={titleBoxX + titleBoxWidth} y2={titleBoxY + 28} stroke="#6b7280" strokeWidth={0.8} />
+      <line x1={titleBoxX + 96} y1={titleBoxY + 28} x2={titleBoxX + 96} y2={titleBoxY + titleBoxHeight} stroke="#6b7280" strokeWidth={0.8} />
+      <text className="schematic-title" x={40} y={52}>
+        {page.title}
+      </text>
+      <text className="schematic-sheet-meta" x={titleBoxX + 12} y={titleBoxY + 18}>
+        TITLE
+      </text>
+      <text className="schematic-sheet-value" x={titleBoxX + 12} y={titleBoxY + 52}>
+        {page.title}
+      </text>
+      <text className="schematic-sheet-meta" x={titleBoxX + 108} y={titleBoxY + 18}>
+        SHEET
+      </text>
+      <text className="schematic-sheet-value" x={titleBoxX + 108} y={titleBoxY + 52}>
+        {page.pageId}
+      </text>
+    </g>
+  );
+}
+
 function PageWires({ page }: { page: SchematicPageScene }) {
   return (
     <g className="schematic-layer-wires">
@@ -293,10 +316,10 @@ function PageWires({ page }: { page: SchematicPageScene }) {
           key={wire.wireId}
           points={wire.points.map((point) => `${point.x},${point.y}`).join(" ")}
           fill="none"
-          stroke={wire.style === "power" ? "#78c6ff" : wire.style === "ground" ? "#9bd37a" : "#e6edf4"}
-          strokeWidth={wire.style === "clock" ? 3.2 : 2.4}
-          strokeLinejoin="round"
-          strokeLinecap="round"
+          stroke={wire.style === "power" || wire.style === "ground" ? "#111827" : "#1f2937"}
+          strokeWidth={wire.style === "clock" ? 1.8 : 1.4}
+          strokeLinejoin="miter"
+          strokeLinecap="square"
         />
       ))}
     </g>
@@ -307,7 +330,7 @@ function PageJunctions({ page }: { page: SchematicPageScene }) {
   return (
     <g className="schematic-layer-junctions">
       {page.junctions.map((junction) => (
-        <circle key={junction.junctionId} cx={junction.position.x} cy={junction.position.y} r={5} fill="#dfe8f1" />
+        <circle key={junction.junctionId} cx={junction.position.x} cy={junction.position.y} r={3.4} fill="#111827" />
       ))}
     </g>
   );
@@ -329,6 +352,14 @@ function PageSymbols({ page }: { page: SchematicPageScene }) {
           <text className="schematic-value" x={instance.valuePosition.x} y={instance.valuePosition.y}>
             {instance.value}
           </text>
+          {instance.placeholderMessage ? (
+            <text className="schematic-placeholder-message" x={instance.bounds.x + 8} y={instance.bounds.y + instance.bounds.height + 32}>
+              {instance.placeholderMessage}
+            </text>
+          ) : null}
+          {instance.renderedPins.map((pin) => (
+            <PinText key={pin.pinId} pin={pin} />
+          ))}
         </g>
       ))}
     </g>
@@ -339,15 +370,15 @@ function PageLabels({ page }: { page: SchematicPageScene }) {
   return (
     <g className="schematic-layer-labels">
       {page.labels.map((label) => (
-        <g
+        <text
           key={label.labelId}
-          transform={`translate(${label.position.x} ${label.position.y}) rotate(${label.orientation})`}
+          className="schematic-net-label"
+          x={label.position.x}
+          y={label.position.y}
+          transform={label.orientation === 0 ? undefined : `rotate(${label.orientation} ${label.position.x} ${label.position.y})`}
         >
-          <rect x={-8} y={-18} width={label.text.length * 10 + 16} height={24} rx={8} fill="#19314b" opacity={0.95} />
-          <text className="schematic-net-label" x={0} y={0}>
-            {label.text}
-          </text>
-        </g>
+          {label.text}
+        </text>
       ))}
     </g>
   );
@@ -358,15 +389,25 @@ function PageMarkers({ page }: { page: SchematicPageScene }) {
     <g className="schematic-layer-markers">
       {page.markers.map((marker) => (
         <g key={marker.markerId} transform={`translate(${marker.position.x} ${marker.position.y})`}>
-          <circle r={12} fill={marker.kind === "error" ? "#c83f49" : marker.kind === "warning" ? "#c88e27" : "#2d7dd2"} />
-          <text className="schematic-marker-text" x={0} y={5} textAnchor="middle">
+          <circle r={6} fill="#f59e0b" stroke="#78350f" strokeWidth={0.8} />
+          <text className="schematic-marker-text" x={0} y={2.8} textAnchor="middle">
             !
-          </text>
-          <text className="schematic-marker-message" x={18} y={6}>
-            {marker.message}
           </text>
         </g>
       ))}
+    </g>
+  );
+}
+
+function PinText({ pin }: { pin: ResolvedPin }) {
+  return (
+    <g className="schematic-pin-text">
+      <text className="schematic-pin-name" x={pin.labelPosition.x} y={pin.labelPosition.y} textAnchor={pin.labelAnchor}>
+        {pin.name}
+      </text>
+      <text className="schematic-pin-number" x={pin.numberPosition.x} y={pin.numberPosition.y} textAnchor={pin.numberAnchor}>
+        {pin.number}
+      </text>
     </g>
   );
 }
@@ -386,8 +427,9 @@ function SymbolGraphic({
           y1={primitive.start.y}
           x2={primitive.end.x}
           y2={primitive.end.y}
-          stroke={primitive.stroke ?? "#dfe8f1"}
-          strokeWidth={primitive.strokeWidth ?? 2}
+          stroke={primitive.stroke ?? "#111827"}
+          strokeWidth={primitive.strokeWidth ?? 1.4}
+          strokeLinecap="square"
         />
       );
     case "pin_stub":
@@ -397,9 +439,9 @@ function SymbolGraphic({
           y1={primitive.start.y}
           x2={primitive.end.x}
           y2={primitive.end.y}
-          stroke={primitive.stroke ?? "#dfe8f1"}
-          strokeWidth={primitive.strokeWidth ?? 2.4}
-          strokeLinecap="round"
+          stroke={primitive.stroke ?? "#111827"}
+          strokeWidth={primitive.strokeWidth ?? 1.4}
+          strokeLinecap="square"
         />
       );
     case "rect":
@@ -410,9 +452,8 @@ function SymbolGraphic({
           width={primitive.width}
           height={primitive.height}
           fill={primitive.fill ?? "none"}
-          stroke={primitive.stroke ?? "#dfe8f1"}
-          strokeWidth={primitive.strokeWidth ?? 2}
-          rx={6}
+          stroke={primitive.stroke ?? "#111827"}
+          strokeWidth={primitive.strokeWidth ?? 1.4}
         />
       );
     case "circle":
@@ -422,8 +463,8 @@ function SymbolGraphic({
           cy={primitive.center.y}
           r={primitive.radius}
           fill={primitive.fill ?? "none"}
-          stroke={primitive.stroke ?? "#dfe8f1"}
-          strokeWidth={primitive.strokeWidth ?? 2}
+          stroke={primitive.stroke ?? "#111827"}
+          strokeWidth={primitive.strokeWidth ?? 1.4}
         />
       );
     case "polyline":
@@ -431,10 +472,10 @@ function SymbolGraphic({
         <polyline
           points={primitive.points.map((point) => `${point.x},${point.y}`).join(" ")}
           fill={primitive.fill ?? "none"}
-          stroke={primitive.stroke ?? "#dfe8f1"}
-          strokeWidth={primitive.strokeWidth ?? 2}
-          strokeLinejoin="round"
-          strokeLinecap="round"
+          stroke={primitive.stroke ?? "#111827"}
+          strokeWidth={primitive.strokeWidth ?? 1.4}
+          strokeLinejoin="miter"
+          strokeLinecap="square"
         />
       );
     case "text":
@@ -442,8 +483,8 @@ function SymbolGraphic({
         <text
           x={primitive.position.x}
           y={primitive.position.y}
-          fontSize={primitive.fontSize ?? 14}
-          fill="#dfe8f1"
+          fontSize={primitive.fontSize ?? 12}
+          fill="#111827"
           textAnchor={primitive.anchor ?? "start"}
         >
           {primitive.text}
@@ -452,7 +493,7 @@ function SymbolGraphic({
   }
 
   return (
-    <text x={symbol.bounds.x} y={symbol.bounds.y} fill="#c83f49">
+    <text x={symbol.bounds.x} y={symbol.bounds.y} fill="#b91c1c">
       Unsupported primitive
     </text>
   );
