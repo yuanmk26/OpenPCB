@@ -213,7 +213,10 @@ tests/demo/
 # Node.js
 node_modules/
 
-# Frontend source libraries
+# Frontend source libraries used by schematic preview
 !src/gui/ui/lib/
-!src/gui/ui/lib/**
+src/gui/ui/lib/*
+!src/gui/ui/lib/mockSchematicGeometry.ts
+!src/gui/ui/lib/schematicPreview.ts
+!src/gui/ui/lib/schematicScene.ts
 
