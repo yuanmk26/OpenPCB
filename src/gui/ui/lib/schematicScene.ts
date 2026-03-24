@@ -5,6 +5,7 @@ import type {
   PageSize,
   PlacedInstance,
   Point,
+  ResolvedPin,
   ResolvedInstance,
   Rotation,
   SchematicGeometry,
@@ -60,13 +61,7 @@ function buildPageScene(
     const symbol = symbolLibrary[instance.symbolId];
 
     if (!symbol) {
-      markerBuffer.push({
-        markerId: `missing-symbol:${instance.instanceId}`,
-        kind: "error",
-        position: instance.position,
-        message: `Missing symbol definition: ${instance.symbolId}`
-      });
-      return [];
+      return [buildPlaceholderInstance(instance, markerBuffer)];
     }
 
     return [resolveInstance(instance, symbol)];
@@ -124,15 +119,18 @@ function resolveInstance(
       return [pin.pinId, anchor];
     })
   );
+  const renderedPins = symbol.pins.map((pin) =>
+    buildRenderedPin(pin.number, pin.name, pin.pinId, pin.direction, globalPins[pin.pinId])
+  );
 
   const defaultRefdesPosition = transformPoint(
-    { x: symbol.bounds.x, y: symbol.bounds.y - 18 },
+    { x: symbol.bounds.x + 6, y: symbol.bounds.y - 10 },
     instance.position,
     instance.rotation,
     instance.mirror
   );
   const defaultValuePosition = transformPoint(
-    { x: symbol.bounds.x, y: symbol.bounds.y + symbol.bounds.height + 22 },
+    { x: symbol.bounds.x + 6, y: symbol.bounds.y + symbol.bounds.height + 18 },
     instance.position,
     instance.rotation,
     instance.mirror
@@ -147,9 +145,116 @@ function resolveInstance(
     transform: buildInstanceTransform(instance.position, instance.rotation, instance.mirror),
     symbol,
     globalPins,
+    renderedPins,
     refdesPosition: instance.refdesPosition ?? defaultRefdesPosition,
     valuePosition: instance.valuePosition ?? defaultValuePosition
   };
+}
+
+function buildPlaceholderInstance(
+  instance: PlacedInstance,
+  markerBuffer: SchematicPageScene["markers"]
+): ResolvedInstance {
+  const placeholderSymbol: SymbolDefinition = {
+    symbolId: "missing-symbol-placeholder",
+    name: "Missing Symbol",
+    bounds: { x: 0, y: 0, width: 160, height: 90 },
+    pins: [],
+    graphics: [
+      { id: "body", type: "rect", origin: { x: 0, y: 0 }, width: 160, height: 90, stroke: "#111827", strokeWidth: 1.5 },
+      { id: "diag-a", type: "line", start: { x: 0, y: 0 }, end: { x: 160, y: 90 }, stroke: "#9f1239", strokeWidth: 1.2 },
+      { id: "diag-b", type: "line", start: { x: 160, y: 0 }, end: { x: 0, y: 90 }, stroke: "#9f1239", strokeWidth: 1.2 },
+      { id: "txt", type: "text", position: { x: 80, y: 46 }, text: "MISSING SYMBOL", anchor: "middle", fontSize: 12 }
+    ]
+  };
+  const bounds = boundsFromPoints([
+    transformPoint({ x: 0, y: 0 }, instance.position, instance.rotation, instance.mirror),
+    transformPoint({ x: 160, y: 0 }, instance.position, instance.rotation, instance.mirror),
+    transformPoint({ x: 160, y: 90 }, instance.position, instance.rotation, instance.mirror),
+    transformPoint({ x: 0, y: 90 }, instance.position, instance.rotation, instance.mirror)
+  ]);
+
+  markerBuffer.push({
+    markerId: `missing-symbol:${instance.instanceId}`,
+    kind: "error",
+    position: instance.position,
+    message: `Missing symbol definition: ${instance.symbolId}`
+  });
+
+  return {
+    instanceId: instance.instanceId,
+    symbolId: instance.symbolId,
+    refdes: instance.refdes,
+    value: instance.value,
+    bounds,
+    transform: buildInstanceTransform(instance.position, instance.rotation, instance.mirror),
+    symbol: placeholderSymbol,
+    globalPins: {},
+    renderedPins: [],
+    refdesPosition: { x: bounds.x + 8, y: bounds.y - 10 },
+    valuePosition: { x: bounds.x + 8, y: bounds.y + bounds.height + 18 },
+    isPlaceholder: true,
+    placeholderMessage: `Missing symbol: ${instance.symbolId}`
+  };
+}
+
+function buildRenderedPin(
+  number: string,
+  name: string,
+  pinId: string,
+  direction: ResolvedPin["direction"],
+  anchor: Point
+): ResolvedPin {
+  switch (direction) {
+    case "left":
+      return {
+        pinId,
+        number,
+        name,
+        anchor,
+        direction,
+        labelPosition: { x: anchor.x + 8, y: anchor.y - 4 },
+        numberPosition: { x: anchor.x - 8, y: anchor.y - 4 },
+        labelAnchor: "start",
+        numberAnchor: "end"
+      };
+    case "right":
+      return {
+        pinId,
+        number,
+        name,
+        anchor,
+        direction,
+        labelPosition: { x: anchor.x - 8, y: anchor.y - 4 },
+        numberPosition: { x: anchor.x + 8, y: anchor.y - 4 },
+        labelAnchor: "end",
+        numberAnchor: "start"
+      };
+    case "up":
+      return {
+        pinId,
+        number,
+        name,
+        anchor,
+        direction,
+        labelPosition: { x: anchor.x, y: anchor.y + 18 },
+        numberPosition: { x: anchor.x, y: anchor.y - 10 },
+        labelAnchor: "middle",
+        numberAnchor: "middle"
+      };
+    case "down":
+      return {
+        pinId,
+        number,
+        name,
+        anchor,
+        direction,
+        labelPosition: { x: anchor.x, y: anchor.y - 10 },
+        numberPosition: { x: anchor.x, y: anchor.y + 20 },
+        labelAnchor: "middle",
+        numberAnchor: "middle"
+      };
+  }
 }
 
 function buildInstanceTransform(position: Point, rotation: Rotation, mirror: boolean): string {
