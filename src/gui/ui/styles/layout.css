@@ -122,6 +122,131 @@
   color: #9eb1c6;
 }
 
+.schematic-viewer {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 12px;
+}
+
+.schematic-toolbar,
+.schematic-statusbar,
+.schematic-viewer-empty {
+  border: 1px solid #2a3b50;
+  border-radius: 12px;
+  background: #162232;
+}
+
+.schematic-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  flex-wrap: wrap;
+}
+
+.schematic-toolbar-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.schematic-chip {
+  border: 1px solid #345271;
+  background: #122131;
+  color: #d8e5f2;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.schematic-chip.is-active {
+  background: #21415f;
+  border-color: #5d8ab6;
+}
+
+.schematic-stage {
+  min-height: 520px;
+  border: 1px solid #2a3b50;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at top left, rgba(54, 100, 150, 0.2), transparent 26%),
+    linear-gradient(180deg, #0d1621 0%, #0f1720 100%);
+  overflow: hidden;
+}
+
+.schematic-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+.schematic-canvas:active {
+  cursor: grabbing;
+}
+
+.schematic-statusbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  color: #98acc2;
+  font-size: 12px;
+}
+
+.schematic-viewer-empty {
+  min-height: 320px;
+  padding: 20px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.schematic-viewer-empty h3 {
+  font-size: 18px;
+}
+
+.schematic-viewer-empty p {
+  color: #9eb1c6;
+  font-size: 13px;
+}
+
+.schematic-refdes,
+.schematic-value,
+.schematic-net-label,
+.schematic-marker-message,
+.schematic-marker-text {
+  fill: #e6edf4;
+  font-size: 14px;
+}
+
+.schematic-refdes {
+  font-size: 13px;
+  fill: #7dd3fc;
+}
+
+.schematic-value {
+  font-size: 12px;
+  fill: #99aeca;
+}
+
+.schematic-net-label {
+  font-size: 13px;
+}
+
+.schematic-marker-text {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.schematic-marker-message {
+  font-size: 12px;
+  fill: #f1d39a;
+}
+
 .chat-column .placeholder-card,
 .workspace-content .placeholder-card {
   min-height: 100%;
@@ -173,5 +298,9 @@
 
   .workspace {
     min-height: 460px;
+  }
+
+  .schematic-statusbar {
+    flex-direction: column;
   }
 }
