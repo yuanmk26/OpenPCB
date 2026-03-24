@@ -24,6 +24,7 @@ export function SchematicPreview() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 1, height: 1 });
+  const [debugEnabled, setDebugEnabled] = useState(true);
   const [viewport, setViewport] = useState<ViewportState>({
     pageId: "",
     scale: 1,
@@ -234,6 +235,13 @@ export function SchematicPreview() {
           ))}
         </div>
         <div className="schematic-toolbar-group">
+          <button
+            type="button"
+            className={`schematic-chip ${debugEnabled ? "is-active" : ""}`}
+            onClick={() => setDebugEnabled((current) => !current)}
+          >
+            Debug
+          </button>
           <button type="button" className="schematic-chip" onClick={() => handleZoom(1.2)}>
             Zoom In
           </button>
@@ -263,6 +271,7 @@ export function SchematicPreview() {
             </pattern>
           </defs>
           <rect x={0} y={0} width={containerSize.width} height={containerSize.height} fill="#d5dbe3" />
+          {debugEnabled ? <DebugScreenGrid width={containerSize.width} height={containerSize.height} /> : null}
           <g transform={`translate(${viewport.pan.x} ${viewport.pan.y})`}>
             <g transform={`scale(${viewport.scale})`}>
               <rect
@@ -288,6 +297,8 @@ export function SchematicPreview() {
               <PageSymbols page={activePage} />
               <PageLabels page={activePage} />
               <PageMarkers page={activePage} />
+              {debugEnabled ? <DiagnosticFixture /> : null}
+              {debugEnabled ? <DebugOverlay page={activePage} /> : null}
             </g>
           </g>
         </svg>
@@ -297,9 +308,121 @@ export function SchematicPreview() {
         <span>
           {activePage.title} - {activePage.size.width} x {activePage.size.height}
         </span>
-        <span>{Math.round(viewport.scale * 100)}%</span>
+        <span>
+          {viewport.mode} · {Math.round(viewport.scale * 100)}% · pan({Math.round(viewport.pan.x)},{Math.round(viewport.pan.y)})
+        </span>
+        {debugEnabled ? (
+          <span>
+            page[{Math.round(activePage.bounds.x)},{Math.round(activePage.bounds.y)},{Math.round(activePage.bounds.width)},{Math.round(activePage.bounds.height)}]
+            {" "}content[
+            {activePage.contentBounds
+              ? `${Math.round(activePage.contentBounds.x)},${Math.round(activePage.contentBounds.y)},${Math.round(activePage.contentBounds.width)},${Math.round(activePage.contentBounds.height)}`
+              : "none"}
+            ]
+          </span>
+        ) : null}
       </div>
     </section>
+  );
+}
+
+function DebugScreenGrid({ width, height }: { width: number; height: number }) {
+  const majorStep = 100;
+  const minorStep = 20;
+  const verticalMinor = Array.from({ length: Math.ceil(width / minorStep) }, (_, index) => index * minorStep);
+  const horizontalMinor = Array.from({ length: Math.ceil(height / minorStep) }, (_, index) => index * minorStep);
+  const verticalMajor = Array.from({ length: Math.ceil(width / majorStep) }, (_, index) => index * majorStep);
+  const horizontalMajor = Array.from({ length: Math.ceil(height / majorStep) }, (_, index) => index * majorStep);
+
+  return (
+    <g className="schematic-debug-screen">
+      {verticalMinor.map((x) => (
+        <line key={`minor-v-${x}`} x1={x} y1={0} x2={x} y2={height} stroke="#cbd5e1" strokeWidth={0.5} />
+      ))}
+      {horizontalMinor.map((y) => (
+        <line key={`minor-h-${y}`} x1={0} y1={y} x2={width} y2={y} stroke="#cbd5e1" strokeWidth={0.5} />
+      ))}
+      {verticalMajor.map((x) => (
+        <g key={`major-v-${x}`}>
+          <line x1={x} y1={0} x2={x} y2={height} stroke="#64748b" strokeWidth={0.8} />
+          <text x={x + 4} y={14} className="schematic-debug-label">
+            {x}
+          </text>
+        </g>
+      ))}
+      {horizontalMajor.map((y) => (
+        <g key={`major-h-${y}`}>
+          <line x1={0} y1={y} x2={width} y2={y} stroke="#64748b" strokeWidth={0.8} />
+          <text x={4} y={y - 4} className="schematic-debug-label">
+            {y}
+          </text>
+        </g>
+      ))}
+      <line x1={0} y1={0} x2={70} y2={0} stroke="#dc2626" strokeWidth={1.2} />
+      <line x1={0} y1={0} x2={0} y2={70} stroke="#2563eb" strokeWidth={1.2} />
+      <text x={6} y={84} className="schematic-debug-label">origin</text>
+    </g>
+  );
+}
+
+function DiagnosticFixture() {
+  return (
+    <g className="schematic-diagnostic-fixture">
+      <rect x={1040} y={120} width={160} height={90} fill="none" stroke="#dc2626" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+      <line x1={1000} y1={150} x2={1040} y2={150} stroke="#dc2626" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+      <line x1={1200} y1={180} x2={1240} y2={180} stroke="#dc2626" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+      <polyline points="1240,180 1300,180 1300,240 1360,240" fill="none" stroke="#dc2626" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+      <text x={1050} y={110} className="schematic-debug-fixture">DBG-U1</text>
+      <text x={1062} y={164} className="schematic-debug-fixture">Debug Fixture</text>
+    </g>
+  );
+}
+
+function DebugOverlay({ page }: { page: SchematicPageScene }) {
+  return (
+    <g className="schematic-debug-overlay">
+      <rect
+        x={page.bounds.x}
+        y={page.bounds.y}
+        width={page.bounds.width}
+        height={page.bounds.height}
+        fill="none"
+        stroke="#2563eb"
+        strokeWidth={2}
+        vectorEffect="non-scaling-stroke"
+      />
+      {page.contentBounds ? (
+        <rect
+          x={page.contentBounds.x}
+          y={page.contentBounds.y}
+          width={page.contentBounds.width}
+          height={page.contentBounds.height}
+          fill="none"
+          stroke="#dc2626"
+          strokeWidth={2}
+          strokeDasharray="10 6"
+          vectorEffect="non-scaling-stroke"
+        />
+      ) : null}
+      {page.instances.map((instance) => (
+        <g key={`debug-${instance.instanceId}`}>
+          <rect
+            x={instance.bounds.x}
+            y={instance.bounds.y}
+            width={instance.bounds.width}
+            height={instance.bounds.height}
+            fill="none"
+            stroke="#16a34a"
+            strokeWidth={1.4}
+            strokeDasharray="6 4"
+            vectorEffect="non-scaling-stroke"
+          />
+          <text x={instance.bounds.x + 4} y={instance.bounds.y - 4} className="schematic-debug-label">
+            {instance.instanceId}
+          </text>
+        </g>
+      ))}
+    </g>
   );
 }
 
