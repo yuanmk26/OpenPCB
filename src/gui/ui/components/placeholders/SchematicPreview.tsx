@@ -206,10 +206,16 @@ export function SchematicPreview() {
         x: containerSize.width / 2,
         y: containerSize.height / 2
       };
-      const worldCenter = {
-        x: (center.x - current.pan.x) / current.scale,
-        y: (center.y - current.pan.y) / current.scale
-      };
+      const worldCenter =
+        current.mode === "page" && activePage.contentBounds
+          ? {
+              x: activePage.contentBounds.x + activePage.contentBounds.width / 2,
+              y: activePage.contentBounds.y + activePage.contentBounds.height / 2
+            }
+          : {
+              x: (center.x - current.pan.x) / current.scale,
+              y: (center.y - current.pan.y) / current.scale
+            };
       const nextPan = {
         x: center.x - worldCenter.x * nextScale,
         y: center.y - worldCenter.y * nextScale
