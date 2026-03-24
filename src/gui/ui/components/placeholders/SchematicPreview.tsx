@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import { buildSchematicScene, fitViewportToContent, fitViewportToPage, getPageScene } from "@/lib/schematicScene";
 import {
   SCHEMATIC_PAGE_FRAME_INSET,
@@ -410,6 +410,17 @@ export function SchematicPreview({ selectedItem, onSelectItem }: SchematicPrevie
     onSelectItem(null);
   }
 
+  function handleCanvasContextMenu(event: ReactMouseEvent<SVGSVGElement>) {
+    if (!selectedItem) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    suppressCanvasClickRef.current = false;
+    onSelectItem(null);
+  }
+
   if (isLoading) {
     return (
       <section className="schematic-viewer">
@@ -480,6 +491,7 @@ export function SchematicPreview({ selectedItem, onSelectItem }: SchematicPrevie
           onPointerLeave={handlePointerUp}
           onWheel={handleWheel}
           onClick={handleCanvasClick}
+          onContextMenu={handleCanvasContextMenu}
         >
           <defs>
             <pattern id="schematic-grid" width={GRID_STEP} height={GRID_STEP} patternUnits="userSpaceOnUse">
