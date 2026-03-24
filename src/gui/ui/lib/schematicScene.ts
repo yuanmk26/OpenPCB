@@ -72,10 +72,15 @@ export function fitViewportToContent(
   const safeHeight = Math.max(containerSize.height, 1);
   const contentPadding = 64;
   const pagePadding = 28;
-  const scale = Math.min(
+  const contentScale = Math.min(
     (safeWidth - contentPadding * 2) / Math.max(contentBounds.width, 1),
     (safeHeight - contentPadding * 2) / Math.max(contentBounds.height, 1)
   );
+  const pageScale = Math.min(
+    (safeWidth - pagePadding * 2) / Math.max(pageBounds.width, 1),
+    (safeHeight - pagePadding * 2) / Math.max(pageBounds.height, 1)
+  );
+  const scale = Math.min(contentScale, pageScale);
   const normalizedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
   const targetPaperMinX = pagePadding;
   const targetPaperMinY = pagePadding;

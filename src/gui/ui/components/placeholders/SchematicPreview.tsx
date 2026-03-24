@@ -29,7 +29,7 @@ export function SchematicPreview() {
     pageId: "",
     scale: 1,
     pan: { x: 0, y: 0 },
-    mode: "content"
+    mode: "page"
   });
 
   useEffect(() => {
@@ -159,7 +159,7 @@ export function SchematicPreview() {
   }
 
   function handleReset() {
-    handleFitContent();
+    handleFitPage();
   }
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
