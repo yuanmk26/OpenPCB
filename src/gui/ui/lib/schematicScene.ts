@@ -34,20 +34,37 @@ export function fitViewport(
   pageSize: PageSize,
   containerSize: { width: number; height: number }
 ): { scale: number; pan: Point } {
+  return fitViewportToBounds(
+    { x: 0, y: 0, width: pageSize.width, height: pageSize.height },
+    containerSize
+  );
+}
+
+export function fitViewportToBounds(
+  bounds: Bounds,
+  containerSize: { width: number; height: number },
+  pageSize?: PageSize
+): { scale: number; pan: Point } {
   const safeWidth = Math.max(containerSize.width, 1);
   const safeHeight = Math.max(containerSize.height, 1);
-  const padding = 36;
+  const padding = 48;
+  const targetWidth = Math.max(bounds.width, 1);
+  const targetHeight = Math.max(bounds.height, 1);
   const scale = Math.min(
-    (safeWidth - padding * 2) / pageSize.width,
-    (safeHeight - padding * 2) / pageSize.height
+    (safeWidth - padding * 2) / targetWidth,
+    (safeHeight - padding * 2) / targetHeight
   );
   const normalizedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  const pageOffsetX = pageSize ? (pageSize.width - bounds.width) / 2 : 0;
+  const pageOffsetY = pageSize ? (pageSize.height - bounds.height) / 2 : 0;
+  const centerX = bounds.x + bounds.width / 2;
+  const centerY = bounds.y + bounds.height / 2;
 
   return {
     scale: normalizedScale,
     pan: {
-      x: (safeWidth - pageSize.width * normalizedScale) / 2,
-      y: (safeHeight - pageSize.height * normalizedScale) / 2
+      x: safeWidth / 2 - centerX * normalizedScale + pageOffsetX * 0,
+      y: safeHeight / 2 - centerY * normalizedScale + pageOffsetY * 0
     }
   };
 }
@@ -66,35 +83,45 @@ function buildPageScene(
 
     return [resolveInstance(instance, symbol)];
   });
+  const wires = page.wires.map((wire) => ({
+    ...wire,
+    bounds: wire.bounds ?? boundsFromPoints(wire.points)
+  }));
+  const labels = page.labels.map((label) => ({
+    ...label,
+    bounds: label.bounds ?? {
+      x: label.position.x,
+      y: label.position.y - 14,
+      width: label.text.length * 9,
+      height: 18
+    }
+  }));
+  const junctions = page.junctions.map((junction) => ({
+    ...junction,
+    bounds: junction.bounds ?? {
+      x: junction.position.x - 4,
+      y: junction.position.y - 4,
+      width: 8,
+      height: 8
+    }
+  }));
+  const contentBounds = mergeBounds([
+    ...instances.map((instance) => instance.bounds),
+    ...wires.map((wire) => wire.bounds).filter(Boolean),
+    ...labels.map((label) => label.bounds).filter(Boolean),
+    ...junctions.map((junction) => junction.bounds).filter(Boolean)
+  ]);
 
   return {
     pageId: page.pageId,
     title: page.title,
     size: page.size,
     bounds: { x: 0, y: 0, width: page.size.width, height: page.size.height },
+    contentBounds,
     instances,
-    wires: page.wires.map((wire) => ({
-      ...wire,
-      bounds: wire.bounds ?? boundsFromPoints(wire.points)
-    })),
-    labels: page.labels.map((label) => ({
-      ...label,
-      bounds: label.bounds ?? {
-        x: label.position.x,
-        y: label.position.y - 14,
-        width: label.text.length * 9,
-        height: 18
-      }
-    })),
-    junctions: page.junctions.map((junction) => ({
-      ...junction,
-      bounds: junction.bounds ?? {
-        x: junction.position.x - 4,
-        y: junction.position.y - 4,
-        width: 8,
-        height: 8
-      }
-    })),
+    wires,
+    labels,
+    junctions,
     markers: markerBuffer
   };
 }
@@ -345,4 +372,24 @@ export function getPrimitiveBounds(primitive: GraphicPrimitive): Bounds {
         height: primitive.fontSize ?? 14
       };
   }
+}
+
+function mergeBounds(boundsList: Array<Bounds | undefined>): Bounds | null {
+  const filtered = boundsList.filter((item): item is Bounds => Boolean(item));
+
+  if (filtered.length === 0) {
+    return null;
+  }
+
+  const minX = Math.min(...filtered.map((bounds) => bounds.x));
+  const minY = Math.min(...filtered.map((bounds) => bounds.y));
+  const maxX = Math.max(...filtered.map((bounds) => bounds.x + bounds.width));
+  const maxY = Math.max(...filtered.map((bounds) => bounds.y + bounds.height));
+
+  return {
+    x: minX - 40,
+    y: minY - 40,
+    width: maxX - minX + 80,
+    height: maxY - minY + 80
+  };
 }
