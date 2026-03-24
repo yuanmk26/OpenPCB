@@ -225,7 +225,7 @@ export function SchematicPreview() {
 
     setViewport((current) => {
       const pageFitted = fitViewportToPage(activePage.bounds, containerSize);
-      const minScale = Math.max(Number((pageFitted.scale * 0.98).toFixed(4)), 0.01);
+      const minScale = Math.max(Number((pageFitted.scale * 0.9).toFixed(6)), 0.0001);
       const zoomingIn = multiplier > 1;
       const useContentBase = current.mode === "page" && zoomingIn;
       const baseScale = current.scale;
@@ -416,7 +416,7 @@ export function SchematicPreview() {
           {activePage.title} - {activePage.size.width} x {activePage.size.height}
         </span>
         <span>
-          {viewport.mode} · {(viewport.scale * 100).toFixed(1)}% · pan({Math.round(viewport.pan.x)},{Math.round(viewport.pan.y)})
+          {viewport.mode} · {formatViewportPercent(viewport.scale)} · pan({Math.round(viewport.pan.x)},{Math.round(viewport.pan.y)})
         </span>
         {renderSummary ? (
           <span>
@@ -530,6 +530,20 @@ function clampPanAxis(
   }
 
   return Math.min(Math.max(value, minValue), maxValue);
+}
+
+function formatViewportPercent(scale: number): string {
+  const percent = scale * 100;
+
+  if (percent < 1) {
+    return `${percent.toFixed(2)}%`;
+  }
+
+  if (percent < 10) {
+    return `${percent.toFixed(1)}%`;
+  }
+
+  return `${Math.round(percent)}%`;
 }
 
 function DiagnosticFixture() {
