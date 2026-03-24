@@ -22,9 +22,9 @@ import type {
 } from "@/types/schematic";
 
 const GRID_STEP = SCHEMATIC_PAGE_GRID_STEP;
-const DRAG_PAN_MIN_FACTOR = 0.12;
-const DRAG_PAN_MAX_FACTOR = 0.55;
-const DRAG_PAN_CURVE_SCALE = 12;
+const DRAG_PAN_MIN_FACTOR = 0.08;
+const DRAG_PAN_MAX_FACTOR = 0.38;
+const DRAG_PAN_CURVE_SCALE = 10;
 
 export function SchematicPreview() {
   const viewportRef = useRef<HTMLDivElement | null>(null);
