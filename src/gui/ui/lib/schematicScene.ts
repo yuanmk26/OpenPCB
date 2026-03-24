@@ -34,37 +34,63 @@ export function fitViewport(
   pageSize: PageSize,
   containerSize: { width: number; height: number }
 ): { scale: number; pan: Point } {
-  return fitViewportToBounds(
-    { x: 0, y: 0, width: pageSize.width, height: pageSize.height },
-    containerSize
-  );
+  return fitViewportToPage({ x: 0, y: 0, width: pageSize.width, height: pageSize.height }, containerSize);
 }
 
-export function fitViewportToBounds(
-  bounds: Bounds,
+export function fitViewportToPage(
+  pageBounds: Bounds,
   containerSize: { width: number; height: number },
-  pageSize?: PageSize
 ): { scale: number; pan: Point } {
   const safeWidth = Math.max(containerSize.width, 1);
   const safeHeight = Math.max(containerSize.height, 1);
   const padding = 48;
-  const targetWidth = Math.max(bounds.width, 1);
-  const targetHeight = Math.max(bounds.height, 1);
+  const targetWidth = Math.max(pageBounds.width, 1);
+  const targetHeight = Math.max(pageBounds.height, 1);
   const scale = Math.min(
     (safeWidth - padding * 2) / targetWidth,
     (safeHeight - padding * 2) / targetHeight
   );
   const normalizedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
-  const pageOffsetX = pageSize ? (pageSize.width - bounds.width) / 2 : 0;
-  const pageOffsetY = pageSize ? (pageSize.height - bounds.height) / 2 : 0;
-  const centerX = bounds.x + bounds.width / 2;
-  const centerY = bounds.y + bounds.height / 2;
+  const scaledWidth = pageBounds.width * normalizedScale;
+  const scaledHeight = pageBounds.height * normalizedScale;
 
   return {
     scale: normalizedScale,
     pan: {
-      x: safeWidth / 2 - centerX * normalizedScale + pageOffsetX * 0,
-      y: safeHeight / 2 - centerY * normalizedScale + pageOffsetY * 0
+      x: (safeWidth - scaledWidth) / 2 - pageBounds.x * normalizedScale,
+      y: (safeHeight - scaledHeight) / 2 - pageBounds.y * normalizedScale
+    }
+  };
+}
+
+export function fitViewportToContent(
+  contentBounds: Bounds,
+  pageBounds: Bounds,
+  containerSize: { width: number; height: number }
+): { scale: number; pan: Point } {
+  const safeWidth = Math.max(containerSize.width, 1);
+  const safeHeight = Math.max(containerSize.height, 1);
+  const contentPadding = 64;
+  const pagePadding = 28;
+  const scale = Math.min(
+    (safeWidth - contentPadding * 2) / Math.max(contentBounds.width, 1),
+    (safeHeight - contentPadding * 2) / Math.max(contentBounds.height, 1)
+  );
+  const normalizedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  const targetPaperMinX = pagePadding;
+  const targetPaperMinY = pagePadding;
+  const targetPaperMaxX = safeWidth - pagePadding - pageBounds.width * normalizedScale;
+  const targetPaperMaxY = safeHeight - pagePadding - pageBounds.height * normalizedScale;
+  const contentCenterX = (contentBounds.x + contentBounds.width / 2) * normalizedScale;
+  const contentCenterY = (contentBounds.y + contentBounds.height / 2) * normalizedScale;
+  const desiredPanX = safeWidth / 2 - contentCenterX;
+  const desiredPanY = safeHeight / 2 - contentCenterY;
+
+  return {
+    scale: normalizedScale,
+    pan: {
+      x: clamp(desiredPanX, targetPaperMaxX, targetPaperMinX),
+      y: clamp(desiredPanY, targetPaperMaxY, targetPaperMinY)
     }
   };
 }
@@ -392,4 +418,8 @@ function mergeBounds(boundsList: Array<Bounds | undefined>): Bounds | null {
     width: maxX - minX + 80,
     height: maxY - minY + 80
   };
+}
+
+function clamp(value: number, minValue: number, maxValue: number): number {
+  return Math.min(Math.max(value, minValue), maxValue);
 }
