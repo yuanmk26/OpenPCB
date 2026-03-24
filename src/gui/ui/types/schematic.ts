@@ -216,4 +216,5 @@ export type ViewportState = {
   pageId: string;
   scale: number;
   pan: Point;
+  mode: "content" | "page";
 };
