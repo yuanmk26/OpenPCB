@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { buildSchematicScene, fitViewportToContent, fitViewportToPage, getPageScene } from "@/lib/schematicScene";
+import {
+  SCHEMATIC_PAGE_FRAME_INSET,
+  SCHEMATIC_PAGE_GRID_STEP,
+  SCHEMATIC_PAGE_INNER_INSET,
+  SCHEMATIC_RADIUS,
+  SCHEMATIC_STROKE,
+  SCHEMATIC_TEXT,
+  SCHEMATIC_TITLE_BOX,
+  su
+} from "@/lib/schematicMetrics";
 import { loadSchematicGeometry } from "@/lib/schematicPreview";
 import type {
   GraphicPrimitive,
@@ -11,7 +21,7 @@ import type {
   ViewportState
 } from "@/types/schematic";
 
-const GRID_STEP = 100;
+const GRID_STEP = SCHEMATIC_PAGE_GRID_STEP;
 
 export function SchematicPreview() {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -281,13 +291,13 @@ export function SchematicPreview() {
                 height={activePage.size.height}
                 fill="#fdfdfc"
                 stroke="#6b7280"
-                strokeWidth={1}
+                strokeWidth={SCHEMATIC_STROKE.pageBorder}
               />
               <rect
-                x={18}
-                y={18}
-                width={activePage.size.width - 36}
-                height={activePage.size.height - 36}
+                x={SCHEMATIC_PAGE_INNER_INSET}
+                y={SCHEMATIC_PAGE_INNER_INSET}
+                width={activePage.size.width - SCHEMATIC_PAGE_INNER_INSET * 2}
+                height={activePage.size.height - SCHEMATIC_PAGE_INNER_INSET * 2}
                 fill="url(#schematic-grid)"
                 opacity={0.32}
               />
@@ -345,7 +355,7 @@ function DebugScreenGrid({ width, height }: { width: number; height: number }) {
       {verticalMajor.map((x) => (
         <g key={`major-v-${x}`}>
           <line x1={x} y1={0} x2={x} y2={height} stroke="#64748b" strokeWidth={0.8} />
-          <text x={x + 4} y={14} className="schematic-debug-label">
+          <text x={x + 4} y={14} className="schematic-debug-label" fontSize={SCHEMATIC_TEXT.debugLabel}>
             {x}
           </text>
         </g>
@@ -353,14 +363,14 @@ function DebugScreenGrid({ width, height }: { width: number; height: number }) {
       {horizontalMajor.map((y) => (
         <g key={`major-h-${y}`}>
           <line x1={0} y1={y} x2={width} y2={y} stroke="#64748b" strokeWidth={0.8} />
-          <text x={4} y={y - 4} className="schematic-debug-label">
+          <text x={4} y={y - 4} className="schematic-debug-label" fontSize={SCHEMATIC_TEXT.debugLabel}>
             {y}
           </text>
         </g>
       ))}
       <line x1={0} y1={0} x2={70} y2={0} stroke="#dc2626" strokeWidth={1.2} />
       <line x1={0} y1={0} x2={0} y2={70} stroke="#2563eb" strokeWidth={1.2} />
-      <text x={6} y={84} className="schematic-debug-label">origin</text>
+      <text x={6} y={84} className="schematic-debug-label" fontSize={SCHEMATIC_TEXT.debugLabel}>origin</text>
     </g>
   );
 }
@@ -372,8 +382,8 @@ function DiagnosticFixture() {
       <line x1={1000} y1={150} x2={1040} y2={150} stroke="#dc2626" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
       <line x1={1200} y1={180} x2={1240} y2={180} stroke="#dc2626" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
       <polyline points="1240,180 1300,180 1300,240 1360,240" fill="none" stroke="#dc2626" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
-      <text x={1050} y={110} className="schematic-debug-fixture">DBG-U1</text>
-      <text x={1062} y={164} className="schematic-debug-fixture">Debug Fixture</text>
+      <text x={1050} y={110} className="schematic-debug-fixture" fontSize={SCHEMATIC_TEXT.debugFixture}>DBG-U1</text>
+      <text x={1062} y={164} className="schematic-debug-fixture" fontSize={SCHEMATIC_TEXT.debugFixture}>Debug Fixture</text>
     </g>
   );
 }
@@ -417,7 +427,7 @@ function DebugOverlay({ page }: { page: SchematicPageScene }) {
             strokeDasharray="6 4"
             vectorEffect="non-scaling-stroke"
           />
-          <text x={instance.bounds.x + 4} y={instance.bounds.y - 4} className="schematic-debug-label">
+          <text x={instance.bounds.x + 4} y={instance.bounds.y - 4} className="schematic-debug-label" fontSize={SCHEMATIC_TEXT.debugLabel}>
             {instance.instanceId}
           </text>
         </g>
@@ -427,30 +437,38 @@ function DebugOverlay({ page }: { page: SchematicPageScene }) {
 }
 
 function PageFrame({ page }: { page: SchematicPageScene }) {
-  const titleBoxWidth = 340;
-  const titleBoxHeight = 90;
-  const titleBoxX = page.size.width - titleBoxWidth - 28;
-  const titleBoxY = page.size.height - titleBoxHeight - 24;
+  const titleBoxWidth = SCHEMATIC_TITLE_BOX.width;
+  const titleBoxHeight = SCHEMATIC_TITLE_BOX.height;
+  const titleBoxX = page.size.width - titleBoxWidth - SCHEMATIC_TITLE_BOX.rightInset;
+  const titleBoxY = page.size.height - titleBoxHeight - SCHEMATIC_TITLE_BOX.bottomInset;
 
   return (
     <g className="schematic-layer-frame">
-      <rect x={22} y={22} width={page.size.width - 44} height={page.size.height - 44} fill="none" stroke="#9ca3af" strokeWidth={0.8} />
-      <rect x={titleBoxX} y={titleBoxY} width={titleBoxWidth} height={titleBoxHeight} fill="none" stroke="#6b7280" strokeWidth={0.8} />
-      <line x1={titleBoxX} y1={titleBoxY + 28} x2={titleBoxX + titleBoxWidth} y2={titleBoxY + 28} stroke="#6b7280" strokeWidth={0.8} />
-      <line x1={titleBoxX + 96} y1={titleBoxY + 28} x2={titleBoxX + 96} y2={titleBoxY + titleBoxHeight} stroke="#6b7280" strokeWidth={0.8} />
-      <text className="schematic-title" x={40} y={52}>
+      <rect
+        x={SCHEMATIC_PAGE_FRAME_INSET}
+        y={SCHEMATIC_PAGE_FRAME_INSET}
+        width={page.size.width - SCHEMATIC_PAGE_FRAME_INSET * 2}
+        height={page.size.height - SCHEMATIC_PAGE_FRAME_INSET * 2}
+        fill="none"
+        stroke="#9ca3af"
+        strokeWidth={SCHEMATIC_STROKE.frame}
+      />
+      <rect x={titleBoxX} y={titleBoxY} width={titleBoxWidth} height={titleBoxHeight} fill="none" stroke="#6b7280" strokeWidth={SCHEMATIC_STROKE.frame} />
+      <line x1={titleBoxX} y1={titleBoxY + SCHEMATIC_TITLE_BOX.headerHeight} x2={titleBoxX + titleBoxWidth} y2={titleBoxY + SCHEMATIC_TITLE_BOX.headerHeight} stroke="#6b7280" strokeWidth={SCHEMATIC_STROKE.frame} />
+      <line x1={titleBoxX + SCHEMATIC_TITLE_BOX.sectionWidth} y1={titleBoxY + SCHEMATIC_TITLE_BOX.headerHeight} x2={titleBoxX + SCHEMATIC_TITLE_BOX.sectionWidth} y2={titleBoxY + titleBoxHeight} stroke="#6b7280" strokeWidth={SCHEMATIC_STROKE.frame} />
+      <text className="schematic-title" x={su(2.5)} y={su(3.25)} fontSize={SCHEMATIC_TEXT.title}>
         {page.title}
       </text>
-      <text className="schematic-sheet-meta" x={titleBoxX + 12} y={titleBoxY + 18}>
+      <text className="schematic-sheet-meta" x={titleBoxX + su(0.75)} y={titleBoxY + su(1.125)} fontSize={SCHEMATIC_TEXT.sheetMeta}>
         TITLE
       </text>
-      <text className="schematic-sheet-value" x={titleBoxX + 12} y={titleBoxY + 52}>
+      <text className="schematic-sheet-value" x={titleBoxX + su(0.75)} y={titleBoxY + su(3.25)} fontSize={SCHEMATIC_TEXT.sheetValue}>
         {page.title}
       </text>
-      <text className="schematic-sheet-meta" x={titleBoxX + 108} y={titleBoxY + 18}>
+      <text className="schematic-sheet-meta" x={titleBoxX + SCHEMATIC_TITLE_BOX.sectionWidth + su(0.75)} y={titleBoxY + su(1.125)} fontSize={SCHEMATIC_TEXT.sheetMeta}>
         SHEET
       </text>
-      <text className="schematic-sheet-value" x={titleBoxX + 108} y={titleBoxY + 52}>
+      <text className="schematic-sheet-value" x={titleBoxX + SCHEMATIC_TITLE_BOX.sectionWidth + su(0.75)} y={titleBoxY + su(3.25)} fontSize={SCHEMATIC_TEXT.sheetValue}>
         {page.pageId}
       </text>
     </g>
@@ -466,7 +484,7 @@ function PageWires({ page }: { page: SchematicPageScene }) {
           points={wire.points.map((point) => `${point.x},${point.y}`).join(" ")}
           fill="none"
           stroke={wire.style === "power" || wire.style === "ground" ? "#111827" : "#1f2937"}
-          strokeWidth={wire.style === "clock" ? 1.6 : 1.2}
+          strokeWidth={wire.style === "clock" ? SCHEMATIC_STROKE.clockWire : SCHEMATIC_STROKE.wire}
           strokeLinejoin="miter"
           strokeLinecap="square"
         />
@@ -483,7 +501,7 @@ function PageJunctions({ page }: { page: SchematicPageScene }) {
           key={junction.junctionId}
           cx={junction.position.x}
           cy={junction.position.y}
-          r={3.4}
+          r={SCHEMATIC_RADIUS.junction}
           fill="#111827"
         />
       ))}
@@ -501,14 +519,14 @@ function PageSymbols({ page }: { page: SchematicPageScene }) {
               <SymbolGraphic key={graphic.id} primitive={graphic} symbol={instance.symbol} />
             ))}
           </g>
-          <text className="schematic-refdes" x={instance.refdesPosition.x} y={instance.refdesPosition.y}>
+          <text className="schematic-refdes" x={instance.refdesPosition.x} y={instance.refdesPosition.y} fontSize={SCHEMATIC_TEXT.refdes}>
             {instance.refdes}
           </text>
-          <text className="schematic-value" x={instance.valuePosition.x} y={instance.valuePosition.y}>
+          <text className="schematic-value" x={instance.valuePosition.x} y={instance.valuePosition.y} fontSize={SCHEMATIC_TEXT.value}>
             {instance.value}
           </text>
           {instance.placeholderMessage ? (
-            <text className="schematic-placeholder-message" x={instance.bounds.x + 8} y={instance.bounds.y + instance.bounds.height + 32}>
+            <text className="schematic-placeholder-message" x={instance.bounds.x + su(0.5)} y={instance.bounds.y + instance.bounds.height + su(2)} fontSize={SCHEMATIC_TEXT.placeholder}>
               {instance.placeholderMessage}
             </text>
           ) : null}
@@ -530,6 +548,7 @@ function PageLabels({ page }: { page: SchematicPageScene }) {
           className="schematic-net-label"
           x={label.position.x}
           y={label.position.y}
+          fontSize={SCHEMATIC_TEXT.netLabel}
           transform={label.orientation === 0 ? undefined : `rotate(${label.orientation} ${label.position.x} ${label.position.y})`}
         >
           {label.text}
@@ -544,8 +563,8 @@ function PageMarkers({ page }: { page: SchematicPageScene }) {
     <g className="schematic-layer-markers">
       {page.markers.map((marker) => (
         <g key={marker.markerId} transform={`translate(${marker.position.x} ${marker.position.y})`}>
-          <circle r={6} fill="#f59e0b" stroke="#78350f" strokeWidth={0.8} />
-          <text className="schematic-marker-text" x={0} y={2.8} textAnchor="middle">
+          <circle r={SCHEMATIC_RADIUS.marker} fill="#f59e0b" stroke="#78350f" strokeWidth={SCHEMATIC_STROKE.marker} />
+          <text className="schematic-marker-text" x={0} y={su(0.175)} textAnchor="middle" fontSize={SCHEMATIC_TEXT.marker}>
             !
           </text>
         </g>
@@ -557,10 +576,10 @@ function PageMarkers({ page }: { page: SchematicPageScene }) {
 function PinText({ pin }: { pin: ResolvedPin }) {
   return (
     <g className="schematic-pin-text">
-      <text className="schematic-pin-name" x={pin.labelPosition.x} y={pin.labelPosition.y} textAnchor={pin.labelAnchor}>
+      <text className="schematic-pin-name" x={pin.labelPosition.x} y={pin.labelPosition.y} textAnchor={pin.labelAnchor} fontSize={SCHEMATIC_TEXT.pinName}>
         {pin.name}
       </text>
-      <text className="schematic-pin-number" x={pin.numberPosition.x} y={pin.numberPosition.y} textAnchor={pin.numberAnchor}>
+      <text className="schematic-pin-number" x={pin.numberPosition.x} y={pin.numberPosition.y} textAnchor={pin.numberAnchor} fontSize={SCHEMATIC_TEXT.pinNumber}>
         {pin.number}
       </text>
     </g>
@@ -583,7 +602,7 @@ function SymbolGraphic({
           x2={primitive.end.x}
           y2={primitive.end.y}
           stroke={normalizeStrokeColor(primitive.stroke)}
-          strokeWidth={primitive.strokeWidth ?? 1.4}
+          strokeWidth={primitive.strokeWidth ?? SCHEMATIC_STROKE.symbol}
           strokeLinecap="square"
         />
       );
@@ -595,7 +614,7 @@ function SymbolGraphic({
           x2={primitive.end.x}
           y2={primitive.end.y}
           stroke={normalizeStrokeColor(primitive.stroke)}
-          strokeWidth={primitive.strokeWidth ?? 1.4}
+          strokeWidth={primitive.strokeWidth ?? SCHEMATIC_STROKE.symbol}
           strokeLinecap="square"
         />
       );
@@ -608,7 +627,7 @@ function SymbolGraphic({
           height={primitive.height}
           fill={primitive.fill ?? "none"}
           stroke={normalizeStrokeColor(primitive.stroke)}
-          strokeWidth={primitive.strokeWidth ?? 1.4}
+          strokeWidth={primitive.strokeWidth ?? SCHEMATIC_STROKE.symbol}
         />
       );
     case "circle":
@@ -619,7 +638,7 @@ function SymbolGraphic({
           r={primitive.radius}
           fill={primitive.fill ?? "none"}
           stroke={normalizeStrokeColor(primitive.stroke)}
-          strokeWidth={primitive.strokeWidth ?? 1.4}
+          strokeWidth={primitive.strokeWidth ?? SCHEMATIC_STROKE.symbol}
         />
       );
     case "polyline":
@@ -628,7 +647,7 @@ function SymbolGraphic({
           points={primitive.points.map((point) => `${point.x},${point.y}`).join(" ")}
           fill={primitive.fill ?? "none"}
           stroke={normalizeStrokeColor(primitive.stroke)}
-          strokeWidth={primitive.strokeWidth ?? 1.4}
+          strokeWidth={primitive.strokeWidth ?? SCHEMATIC_STROKE.symbol}
           strokeLinejoin="miter"
           strokeLinecap="square"
         />
@@ -638,7 +657,7 @@ function SymbolGraphic({
         <text
           x={primitive.position.x}
           y={primitive.position.y}
-          fontSize={primitive.fontSize ?? 12}
+          fontSize={primitive.fontSize ?? SCHEMATIC_TEXT.primitiveBody}
           fill="#111827"
           textAnchor={primitive.anchor ?? "start"}
         >

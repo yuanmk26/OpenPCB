@@ -1,4 +1,7 @@
+import { SCHEMATIC_STROKE, SCHEMATIC_TEXT, su } from "@/lib/schematicMetrics";
 import type { SchematicGeometry } from "@/types/schematic";
+
+const u = su;
 
 export const mockSchematicGeometry: SchematicGeometry = {
   version: "1.0.0",
@@ -6,73 +9,73 @@ export const mockSchematicGeometry: SchematicGeometry = {
     "usb-c-input": {
       symbolId: "usb-c-input",
       name: "USB-C Input",
-      bounds: { x: 0, y: 0, width: 110, height: 90 },
+      bounds: { x: 0, y: 0, width: u(8), height: u(6) },
       pins: [
-        { pinId: "vbus", number: "A4", name: "VBUS", anchor: { x: 110, y: 20 }, direction: "right" },
-        { pinId: "gnd", number: "A1", name: "GND", anchor: { x: 110, y: 70 }, direction: "right" }
+        { pinId: "vbus", number: "A4", name: "VBUS", anchor: { x: u(8), y: u(1.5) }, direction: "right" },
+        { pinId: "gnd", number: "A1", name: "GND", anchor: { x: u(8), y: u(4.5) }, direction: "right" }
       ],
       graphics: [
-        { id: "body", type: "rect", origin: { x: 10, y: 10 }, width: 80, height: 70, stroke: "#111827" },
-        { id: "p1", type: "pin_stub", start: { x: 90, y: 20 }, end: { x: 110, y: 20 }, stroke: "#111827" },
-        { id: "p2", type: "pin_stub", start: { x: 90, y: 70 }, end: { x: 110, y: 70 }, stroke: "#111827" },
-        { id: "t1", type: "text", position: { x: 50, y: 48 }, text: "USB-C", anchor: "middle", fontSize: 16 }
+        { id: "body", type: "rect", origin: { x: u(1), y: u(1) }, width: u(6), height: u(4), stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "p1", type: "pin_stub", start: { x: u(7), y: u(1.5) }, end: { x: u(8), y: u(1.5) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "p2", type: "pin_stub", start: { x: u(7), y: u(4.5) }, end: { x: u(8), y: u(4.5) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "t1", type: "text", position: { x: u(4), y: u(3) }, text: "USB-C", anchor: "middle", fontSize: SCHEMATIC_TEXT.primitiveBody }
       ]
     },
     ldo: {
       symbolId: "ldo",
       name: "LDO Regulator",
-      bounds: { x: 0, y: 0, width: 140, height: 110 },
+      bounds: { x: 0, y: 0, width: u(10), height: u(7) },
       pins: [
-        { pinId: "vin", number: "1", name: "VIN", anchor: { x: 0, y: 28 }, direction: "left" },
-        { pinId: "gnd", number: "2", name: "GND", anchor: { x: 70, y: 110 }, direction: "down" },
-        { pinId: "vout", number: "3", name: "VOUT", anchor: { x: 140, y: 28 }, direction: "right" }
+        { pinId: "vin", number: "1", name: "VIN", anchor: { x: 0, y: u(2) }, direction: "left" },
+        { pinId: "gnd", number: "2", name: "GND", anchor: { x: u(5), y: u(7) }, direction: "down" },
+        { pinId: "vout", number: "3", name: "VOUT", anchor: { x: u(10), y: u(2) }, direction: "right" }
       ],
       graphics: [
-        { id: "body", type: "rect", origin: { x: 25, y: 12 }, width: 90, height: 70, stroke: "#111827" },
-        { id: "vin", type: "pin_stub", start: { x: 0, y: 28 }, end: { x: 25, y: 28 }, stroke: "#111827" },
-        { id: "vout", type: "pin_stub", start: { x: 115, y: 28 }, end: { x: 140, y: 28 }, stroke: "#111827" },
-        { id: "gnd", type: "pin_stub", start: { x: 70, y: 82 }, end: { x: 70, y: 110 }, stroke: "#111827" },
-        { id: "txt", type: "text", position: { x: 70, y: 48 }, text: "LDO", anchor: "middle", fontSize: 16 }
+        { id: "body", type: "rect", origin: { x: u(2), y: u(1) }, width: u(6), height: u(4.5), stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "vin", type: "pin_stub", start: { x: 0, y: u(2) }, end: { x: u(2), y: u(2) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "vout", type: "pin_stub", start: { x: u(8), y: u(2) }, end: { x: u(10), y: u(2) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "gnd", type: "pin_stub", start: { x: u(5), y: u(5.5) }, end: { x: u(5), y: u(7) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "txt", type: "text", position: { x: u(5), y: u(3.25) }, text: "LDO", anchor: "middle", fontSize: SCHEMATIC_TEXT.primitiveBody }
       ]
     },
     mcu: {
       symbolId: "mcu",
       name: "MCU",
-      bounds: { x: 0, y: 0, width: 180, height: 160 },
+      bounds: { x: 0, y: 0, width: u(12), height: u(10) },
       pins: [
-        { pinId: "vcc", number: "24", name: "VCC", anchor: { x: 90, y: 0 }, direction: "up" },
-        { pinId: "gnd", number: "12", name: "GND", anchor: { x: 90, y: 160 }, direction: "down" },
-        { pinId: "swdio", number: "34", name: "SWDIO", anchor: { x: 180, y: 50 }, direction: "right" },
-        { pinId: "swclk", number: "37", name: "SWCLK", anchor: { x: 180, y: 80 }, direction: "right" },
-        { pinId: "uart_tx", number: "18", name: "TX", anchor: { x: 180, y: 120 }, direction: "right" },
-        { pinId: "uart_rx", number: "17", name: "RX", anchor: { x: 0, y: 120 }, direction: "left" }
+        { pinId: "vcc", number: "24", name: "VCC", anchor: { x: u(6), y: 0 }, direction: "up" },
+        { pinId: "gnd", number: "12", name: "GND", anchor: { x: u(6), y: u(10) }, direction: "down" },
+        { pinId: "swdio", number: "34", name: "SWDIO", anchor: { x: u(12), y: u(3) }, direction: "right" },
+        { pinId: "swclk", number: "37", name: "SWCLK", anchor: { x: u(12), y: u(5) }, direction: "right" },
+        { pinId: "uart_tx", number: "18", name: "TX", anchor: { x: u(12), y: u(7.5) }, direction: "right" },
+        { pinId: "uart_rx", number: "17", name: "RX", anchor: { x: 0, y: u(7.5) }, direction: "left" }
       ],
       graphics: [
-        { id: "body", type: "rect", origin: { x: 20, y: 20 }, width: 140, height: 120, stroke: "#111827" },
-        { id: "vcc", type: "pin_stub", start: { x: 90, y: 0 }, end: { x: 90, y: 20 }, stroke: "#111827" },
-        { id: "gnd", type: "pin_stub", start: { x: 90, y: 140 }, end: { x: 90, y: 160 }, stroke: "#111827" },
-        { id: "swdio", type: "pin_stub", start: { x: 160, y: 50 }, end: { x: 180, y: 50 }, stroke: "#111827" },
-        { id: "swclk", type: "pin_stub", start: { x: 160, y: 80 }, end: { x: 180, y: 80 }, stroke: "#111827" },
-        { id: "tx", type: "pin_stub", start: { x: 160, y: 120 }, end: { x: 180, y: 120 }, stroke: "#111827" },
-        { id: "rx", type: "pin_stub", start: { x: 0, y: 120 }, end: { x: 20, y: 120 }, stroke: "#111827" },
-        { id: "txt", type: "text", position: { x: 90, y: 82 }, text: "MCU", anchor: "middle", fontSize: 18 }
+        { id: "body", type: "rect", origin: { x: u(1.5), y: u(1.5) }, width: u(9), height: u(7), stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbolStrong },
+        { id: "vcc", type: "pin_stub", start: { x: u(6), y: 0 }, end: { x: u(6), y: u(1.5) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "gnd", type: "pin_stub", start: { x: u(6), y: u(8.5) }, end: { x: u(6), y: u(10) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "swdio", type: "pin_stub", start: { x: u(10.5), y: u(3) }, end: { x: u(12), y: u(3) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "swclk", type: "pin_stub", start: { x: u(10.5), y: u(5) }, end: { x: u(12), y: u(5) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "tx", type: "pin_stub", start: { x: u(10.5), y: u(7.5) }, end: { x: u(12), y: u(7.5) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "rx", type: "pin_stub", start: { x: 0, y: u(7.5) }, end: { x: u(1.5), y: u(7.5) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "txt", type: "text", position: { x: u(6), y: u(5.25) }, text: "MCU", anchor: "middle", fontSize: SCHEMATIC_TEXT.primitiveTitle }
       ]
     },
     debugger: {
       symbolId: "debugger",
       name: "Debug Header",
-      bounds: { x: 0, y: 0, width: 110, height: 120 },
+      bounds: { x: 0, y: 0, width: u(8), height: u(8) },
       pins: [
-        { pinId: "swdio", number: "2", name: "SWDIO", anchor: { x: 0, y: 30 }, direction: "left" },
-        { pinId: "swclk", number: "4", name: "SWCLK", anchor: { x: 0, y: 60 }, direction: "left" },
-        { pinId: "gnd", number: "3", name: "GND", anchor: { x: 0, y: 90 }, direction: "left" }
+        { pinId: "swdio", number: "2", name: "SWDIO", anchor: { x: 0, y: u(2) }, direction: "left" },
+        { pinId: "swclk", number: "4", name: "SWCLK", anchor: { x: 0, y: u(4) }, direction: "left" },
+        { pinId: "gnd", number: "3", name: "GND", anchor: { x: 0, y: u(6) }, direction: "left" }
       ],
       graphics: [
-        { id: "body", type: "rect", origin: { x: 20, y: 15 }, width: 70, height: 90, stroke: "#111827" },
-        { id: "swdio", type: "pin_stub", start: { x: 0, y: 30 }, end: { x: 20, y: 30 }, stroke: "#111827" },
-        { id: "swclk", type: "pin_stub", start: { x: 0, y: 60 }, end: { x: 20, y: 60 }, stroke: "#111827" },
-        { id: "gnd", type: "pin_stub", start: { x: 0, y: 90 }, end: { x: 20, y: 90 }, stroke: "#111827" },
-        { id: "txt", type: "text", position: { x: 55, y: 62 }, text: "SWD", anchor: "middle", fontSize: 14 }
+        { id: "body", type: "rect", origin: { x: u(1.5), y: u(1) }, width: u(5), height: u(6), stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "swdio", type: "pin_stub", start: { x: 0, y: u(2) }, end: { x: u(1.5), y: u(2) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "swclk", type: "pin_stub", start: { x: 0, y: u(4) }, end: { x: u(1.5), y: u(4) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "gnd", type: "pin_stub", start: { x: 0, y: u(6) }, end: { x: u(1.5), y: u(6) }, stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbol },
+        { id: "txt", type: "text", position: { x: u(4), y: u(4.125) }, text: "SWD", anchor: "middle", fontSize: SCHEMATIC_TEXT.primitiveSmall }
       ]
     }
   },
@@ -80,29 +83,25 @@ export const mockSchematicGeometry: SchematicGeometry = {
     {
       pageId: "page-power",
       title: "Power Input",
-      size: { width: 2800, height: 1800 },
+      size: { width: u(176), height: u(112) },
       instances: [
         {
           instanceId: "j1",
           symbolId: "usb-c-input",
           refdes: "J1",
           value: "USB-C",
-          position: { x: 120, y: 150 },
+          position: { x: u(8), y: u(10) },
           rotation: 0,
-          mirror: false,
-          refdesPosition: { x: 130, y: 124 },
-          valuePosition: { x: 130, y: 262 }
+          mirror: false
         },
         {
           instanceId: "u2",
           symbolId: "ldo",
           refdes: "U2",
           value: "3V3 LDO",
-          position: { x: 460, y: 120 },
+          position: { x: u(28), y: u(8) },
           rotation: 0,
-          mirror: false,
-          refdesPosition: { x: 488, y: 92 },
-          valuePosition: { x: 478, y: 248 }
+          mirror: false
         }
       ],
       wires: [
@@ -111,10 +110,10 @@ export const mockSchematicGeometry: SchematicGeometry = {
           netId: "net-vbus",
           style: "power",
           points: [
-            { x: 230, y: 170 },
-            { x: 320, y: 170 },
-            { x: 320, y: 148 },
-            { x: 460, y: 148 }
+            { x: u(16), y: u(11.5) },
+            { x: u(20), y: u(11.5) },
+            { x: u(20), y: u(10) },
+            { x: u(28), y: u(10) }
           ]
         },
         {
@@ -122,11 +121,11 @@ export const mockSchematicGeometry: SchematicGeometry = {
           netId: "net-gnd",
           style: "ground",
           points: [
-            { x: 230, y: 220 },
-            { x: 320, y: 220 },
-            { x: 320, y: 300 },
-            { x: 530, y: 300 },
-            { x: 530, y: 230 }
+            { x: u(16), y: u(14.5) },
+            { x: u(20), y: u(14.5) },
+            { x: u(20), y: u(18) },
+            { x: u(33), y: u(18) },
+            { x: u(33), y: u(15) }
           ]
         },
         {
@@ -134,56 +133,52 @@ export const mockSchematicGeometry: SchematicGeometry = {
           netId: "net-3v3",
           style: "power",
           points: [
-            { x: 600, y: 148 },
-            { x: 770, y: 148 },
-            { x: 770, y: 110 }
+            { x: u(38), y: u(10) },
+            { x: u(48), y: u(10) },
+            { x: u(48), y: u(7.5) }
           ]
         }
       ],
       labels: [
-        { labelId: "lbl-vbus", netId: "net-vbus", text: "VBUS", position: { x: 332, y: 158 }, orientation: 0 },
-        { labelId: "lbl-3v3", netId: "net-3v3", text: "+3V3", position: { x: 782, y: 118 }, orientation: 0 },
-        { labelId: "lbl-gnd", netId: "net-gnd", text: "GND", position: { x: 540, y: 314 }, orientation: 0 }
+        { labelId: "lbl-vbus", netId: "net-vbus", text: "VBUS", position: { x: u(21), y: u(10.75) }, orientation: 0 },
+        { labelId: "lbl-3v3", netId: "net-3v3", text: "+3V3", position: { x: u(48.75), y: u(8.125) }, orientation: 0 },
+        { labelId: "lbl-gnd", netId: "net-gnd", text: "GND", position: { x: u(33.5), y: u(18.875) }, orientation: 0 }
       ],
       junctions: [
-        { junctionId: "junc-gnd", position: { x: 320, y: 220 } },
-        { junctionId: "junc-vbus", position: { x: 320, y: 170 } }
+        { junctionId: "junc-gnd", position: { x: u(20), y: u(14.5) } },
+        { junctionId: "junc-vbus", position: { x: u(20), y: u(11.5) } }
       ],
       markers: []
     },
     {
       pageId: "page-core",
       title: "MCU Core",
-      size: { width: 3200, height: 2000 },
+      size: { width: u(200), height: u(128) },
       instances: [
         {
           instanceId: "u1",
           symbolId: "mcu",
           refdes: "U1",
           value: "STM32",
-          position: { x: 540, y: 220 },
+          position: { x: u(34), y: u(16) },
           rotation: 0,
-          mirror: false,
-          refdesPosition: { x: 596, y: 190 },
-          valuePosition: { x: 586, y: 414 }
+          mirror: false
         },
         {
           instanceId: "j2",
           symbolId: "debugger",
           refdes: "J2",
           value: "SWD",
-          position: { x: 980, y: 280 },
+          position: { x: u(62), y: u(20) },
           rotation: 0,
-          mirror: false,
-          refdesPosition: { x: 1004, y: 248 },
-          valuePosition: { x: 1004, y: 420 }
+          mirror: false
         },
         {
           instanceId: "x1",
           symbolId: "missing-symbol",
           refdes: "X1",
           value: "Future Sensor",
-          position: { x: 180, y: 520 },
+          position: { x: u(12), y: u(34) },
           rotation: 90,
           mirror: false
         }
@@ -194,9 +189,9 @@ export const mockSchematicGeometry: SchematicGeometry = {
           netId: "net-3v3",
           style: "power",
           points: [
-            { x: 630, y: 220 },
-            { x: 630, y: 150 },
-            { x: 770, y: 150 }
+            { x: u(40), y: u(16) },
+            { x: u(40), y: u(11) },
+            { x: u(48), y: u(11) }
           ]
         },
         {
@@ -204,9 +199,9 @@ export const mockSchematicGeometry: SchematicGeometry = {
           netId: "net-gnd",
           style: "ground",
           points: [
-            { x: 630, y: 380 },
-            { x: 630, y: 450 },
-            { x: 770, y: 450 }
+            { x: u(40), y: u(26) },
+            { x: u(40), y: u(31) },
+            { x: u(48), y: u(31) }
           ]
         },
         {
@@ -214,10 +209,10 @@ export const mockSchematicGeometry: SchematicGeometry = {
           netId: "net-swdio",
           style: "signal",
           points: [
-            { x: 720, y: 270 },
-            { x: 850, y: 270 },
-            { x: 850, y: 310 },
-            { x: 980, y: 310 }
+            { x: u(46), y: u(19) },
+            { x: u(54), y: u(19) },
+            { x: u(54), y: u(22) },
+            { x: u(62), y: u(22) }
           ]
         },
         {
@@ -225,28 +220,28 @@ export const mockSchematicGeometry: SchematicGeometry = {
           netId: "net-swclk",
           style: "clock",
           points: [
-            { x: 720, y: 300 },
-            { x: 850, y: 300 },
-            { x: 850, y: 340 },
-            { x: 980, y: 340 }
+            { x: u(46), y: u(21) },
+            { x: u(54), y: u(21) },
+            { x: u(54), y: u(24) },
+            { x: u(62), y: u(24) }
           ]
         }
       ],
       labels: [
-        { labelId: "lbl-3v3-core", netId: "net-3v3", text: "+3V3", position: { x: 782, y: 160 }, orientation: 0 },
-        { labelId: "lbl-gnd-core", netId: "net-gnd", text: "GND", position: { x: 782, y: 460 }, orientation: 0 },
-        { labelId: "lbl-swdio", netId: "net-swdio", text: "SWDIO", position: { x: 862, y: 260 }, orientation: 0 },
-        { labelId: "lbl-swclk", netId: "net-swclk", text: "SWCLK", position: { x: 862, y: 330 }, orientation: 0 }
+        { labelId: "lbl-3v3-core", netId: "net-3v3", text: "+3V3", position: { x: u(48.75), y: u(11.625) }, orientation: 0 },
+        { labelId: "lbl-gnd-core", netId: "net-gnd", text: "GND", position: { x: u(48.75), y: u(31.625) }, orientation: 0 },
+        { labelId: "lbl-swdio", netId: "net-swdio", text: "SWDIO", position: { x: u(54.75), y: u(18.375) }, orientation: 0 },
+        { labelId: "lbl-swclk", netId: "net-swclk", text: "SWCLK", position: { x: u(54.75), y: u(22.75) }, orientation: 0 }
       ],
       junctions: [
-        { junctionId: "junc-swdio", position: { x: 850, y: 270 } },
-        { junctionId: "junc-swclk", position: { x: 850, y: 300 } }
+        { junctionId: "junc-swdio", position: { x: u(54), y: u(19) } },
+        { junctionId: "junc-swclk", position: { x: u(54), y: u(21) } }
       ],
       markers: [
         {
           markerId: "m1",
           kind: "warning",
-          position: { x: 208, y: 520 },
+          position: { x: u(14), y: u(34) },
           message: "Reserved area for future sensor block."
         }
       ]

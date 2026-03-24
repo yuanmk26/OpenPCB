@@ -13,6 +13,15 @@ import type {
   SchematicScene,
   SymbolDefinition
 } from "@/types/schematic";
+import {
+  SCHEMATIC_CONTENT_BOUNDS_MARGIN,
+  SCHEMATIC_STROKE,
+  SCHEMATIC_TEXT,
+  SCHEMATIC_VIEWPORT_CONTENT_EDGE_PADDING,
+  SCHEMATIC_VIEWPORT_CONTENT_PADDING,
+  SCHEMATIC_VIEWPORT_PAGE_PADDING,
+  su
+} from "@/lib/schematicMetrics";
 
 export function buildSchematicScene(geometry: SchematicGeometry): SchematicScene {
   return {
@@ -43,7 +52,7 @@ export function fitViewportToPage(
 ): { scale: number; pan: Point } {
   const safeWidth = Math.max(containerSize.width, 1);
   const safeHeight = Math.max(containerSize.height, 1);
-  const padding = 48;
+  const padding = SCHEMATIC_VIEWPORT_PAGE_PADDING;
   const targetWidth = Math.max(pageBounds.width, 1);
   const targetHeight = Math.max(pageBounds.height, 1);
   const scale = Math.min(
@@ -70,8 +79,8 @@ export function fitViewportToContent(
 ): { scale: number; pan: Point } {
   const safeWidth = Math.max(containerSize.width, 1);
   const safeHeight = Math.max(containerSize.height, 1);
-  const contentPadding = 64;
-  const pagePadding = 28;
+  const contentPadding = SCHEMATIC_VIEWPORT_CONTENT_PADDING;
+  const pagePadding = SCHEMATIC_VIEWPORT_CONTENT_EDGE_PADDING;
   const contentScale = Math.min(
     (safeWidth - contentPadding * 2) / Math.max(contentBounds.width, 1),
     (safeHeight - contentPadding * 2) / Math.max(contentBounds.height, 1)
@@ -122,18 +131,18 @@ function buildPageScene(
     ...label,
     bounds: label.bounds ?? {
       x: label.position.x,
-      y: label.position.y - 14,
-      width: label.text.length * 9,
-      height: 18
+      y: label.position.y - SCHEMATIC_TEXT.netLabel,
+      width: label.text.length * (SCHEMATIC_TEXT.netLabel * 0.72),
+      height: SCHEMATIC_TEXT.netLabel
     }
   }));
   const junctions = page.junctions.map((junction) => ({
     ...junction,
     bounds: junction.bounds ?? {
-      x: junction.position.x - 4,
-      y: junction.position.y - 4,
-      width: 8,
-      height: 8
+      x: junction.position.x - su(0.25),
+      y: junction.position.y - su(0.25),
+      width: su(0.5),
+      height: su(0.5)
     }
   }));
   const contentBounds = mergeBounds([
@@ -182,13 +191,13 @@ function resolveInstance(
   );
 
   const defaultRefdesPosition = transformPoint(
-    { x: symbol.bounds.x + 6, y: symbol.bounds.y - 10 },
+    { x: symbol.bounds.x + su(0.375), y: symbol.bounds.y - su(0.625) },
     instance.position,
     instance.rotation,
     instance.mirror
   );
   const defaultValuePosition = transformPoint(
-    { x: symbol.bounds.x + 6, y: symbol.bounds.y + symbol.bounds.height + 18 },
+    { x: symbol.bounds.x + su(0.375), y: symbol.bounds.y + symbol.bounds.height + su(1.125) },
     instance.position,
     instance.rotation,
     instance.mirror
@@ -216,20 +225,20 @@ function buildPlaceholderInstance(
   const placeholderSymbol: SymbolDefinition = {
     symbolId: "missing-symbol-placeholder",
     name: "Missing Symbol",
-    bounds: { x: 0, y: 0, width: 160, height: 90 },
+    bounds: { x: 0, y: 0, width: su(10), height: su(6) },
     pins: [],
     graphics: [
-      { id: "body", type: "rect", origin: { x: 0, y: 0 }, width: 160, height: 90, stroke: "#111827", strokeWidth: 1.5 },
-      { id: "diag-a", type: "line", start: { x: 0, y: 0 }, end: { x: 160, y: 90 }, stroke: "#9f1239", strokeWidth: 1.2 },
-      { id: "diag-b", type: "line", start: { x: 160, y: 0 }, end: { x: 0, y: 90 }, stroke: "#9f1239", strokeWidth: 1.2 },
-      { id: "txt", type: "text", position: { x: 80, y: 46 }, text: "MISSING SYMBOL", anchor: "middle", fontSize: 12 }
+      { id: "body", type: "rect", origin: { x: 0, y: 0 }, width: su(10), height: su(6), stroke: "#111827", strokeWidth: SCHEMATIC_STROKE.symbolStrong },
+      { id: "diag-a", type: "line", start: { x: 0, y: 0 }, end: { x: su(10), y: su(6) }, stroke: "#9f1239", strokeWidth: SCHEMATIC_STROKE.symbol },
+      { id: "diag-b", type: "line", start: { x: su(10), y: 0 }, end: { x: 0, y: su(6) }, stroke: "#9f1239", strokeWidth: SCHEMATIC_STROKE.symbol },
+      { id: "txt", type: "text", position: { x: su(5), y: su(3.125) }, text: "MISSING SYMBOL", anchor: "middle", fontSize: SCHEMATIC_TEXT.primitiveSmall }
     ]
   };
   const bounds = boundsFromPoints([
     transformPoint({ x: 0, y: 0 }, instance.position, instance.rotation, instance.mirror),
-    transformPoint({ x: 160, y: 0 }, instance.position, instance.rotation, instance.mirror),
-    transformPoint({ x: 160, y: 90 }, instance.position, instance.rotation, instance.mirror),
-    transformPoint({ x: 0, y: 90 }, instance.position, instance.rotation, instance.mirror)
+    transformPoint({ x: su(10), y: 0 }, instance.position, instance.rotation, instance.mirror),
+    transformPoint({ x: su(10), y: su(6) }, instance.position, instance.rotation, instance.mirror),
+    transformPoint({ x: 0, y: su(6) }, instance.position, instance.rotation, instance.mirror)
   ]);
 
   markerBuffer.push({
@@ -249,8 +258,8 @@ function buildPlaceholderInstance(
     symbol: placeholderSymbol,
     globalPins: {},
     renderedPins: [],
-    refdesPosition: { x: bounds.x + 8, y: bounds.y - 10 },
-    valuePosition: { x: bounds.x + 8, y: bounds.y + bounds.height + 18 },
+    refdesPosition: { x: bounds.x + su(0.5), y: bounds.y - su(0.625) },
+    valuePosition: { x: bounds.x + su(0.5), y: bounds.y + bounds.height + su(1.125) },
     isPlaceholder: true,
     placeholderMessage: `Missing symbol: ${instance.symbolId}`
   };
@@ -271,8 +280,8 @@ function buildRenderedPin(
         name,
         anchor,
         direction,
-        labelPosition: { x: anchor.x + 8, y: anchor.y - 4 },
-        numberPosition: { x: anchor.x - 8, y: anchor.y - 4 },
+        labelPosition: { x: anchor.x + su(0.5), y: anchor.y - su(0.25) },
+        numberPosition: { x: anchor.x - su(0.5), y: anchor.y - su(0.25) },
         labelAnchor: "start",
         numberAnchor: "end"
       };
@@ -283,8 +292,8 @@ function buildRenderedPin(
         name,
         anchor,
         direction,
-        labelPosition: { x: anchor.x - 8, y: anchor.y - 4 },
-        numberPosition: { x: anchor.x + 8, y: anchor.y - 4 },
+        labelPosition: { x: anchor.x - su(0.5), y: anchor.y - su(0.25) },
+        numberPosition: { x: anchor.x + su(0.5), y: anchor.y - su(0.25) },
         labelAnchor: "end",
         numberAnchor: "start"
       };
@@ -295,8 +304,8 @@ function buildRenderedPin(
         name,
         anchor,
         direction,
-        labelPosition: { x: anchor.x, y: anchor.y + 18 },
-        numberPosition: { x: anchor.x, y: anchor.y - 10 },
+        labelPosition: { x: anchor.x, y: anchor.y + su(1.125) },
+        numberPosition: { x: anchor.x, y: anchor.y - su(0.625) },
         labelAnchor: "middle",
         numberAnchor: "middle"
       };
@@ -307,8 +316,8 @@ function buildRenderedPin(
         name,
         anchor,
         direction,
-        labelPosition: { x: anchor.x, y: anchor.y - 10 },
-        numberPosition: { x: anchor.x, y: anchor.y + 20 },
+        labelPosition: { x: anchor.x, y: anchor.y - su(0.625) },
+        numberPosition: { x: anchor.x, y: anchor.y + su(1.25) },
         labelAnchor: "middle",
         numberAnchor: "middle"
       };
@@ -398,9 +407,9 @@ export function getPrimitiveBounds(primitive: GraphicPrimitive): Bounds {
     case "text":
       return {
         x: primitive.position.x,
-        y: primitive.position.y - (primitive.fontSize ?? 14),
-        width: primitive.text.length * ((primitive.fontSize ?? 14) * 0.62),
-        height: primitive.fontSize ?? 14
+        y: primitive.position.y - (primitive.fontSize ?? SCHEMATIC_TEXT.primitiveBody),
+        width: primitive.text.length * ((primitive.fontSize ?? SCHEMATIC_TEXT.primitiveBody) * 0.62),
+        height: primitive.fontSize ?? SCHEMATIC_TEXT.primitiveBody
       };
   }
 }
@@ -418,10 +427,10 @@ function mergeBounds(boundsList: Array<Bounds | undefined>): Bounds | null {
   const maxY = Math.max(...filtered.map((bounds) => bounds.y + bounds.height));
 
   return {
-    x: minX - 40,
-    y: minY - 40,
-    width: maxX - minX + 80,
-    height: maxY - minY + 80
+    x: minX - SCHEMATIC_CONTENT_BOUNDS_MARGIN,
+    y: minY - SCHEMATIC_CONTENT_BOUNDS_MARGIN,
+    width: maxX - minX + SCHEMATIC_CONTENT_BOUNDS_MARGIN * 2,
+    height: maxY - minY + SCHEMATIC_CONTENT_BOUNDS_MARGIN * 2
   };
 }
 

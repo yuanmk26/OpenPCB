@@ -213,65 +213,53 @@
 }
 
 .schematic-refdes {
-  font-size: 12px;
   fill: #111827;
   font-weight: 700;
 }
 
 .schematic-value {
-  font-size: 12px;
   fill: #111827;
 }
 
 .schematic-net-label {
-  font-size: 12px;
   fill: #111827;
   text-decoration: underline;
 }
 
 .schematic-title {
-  font-size: 18px;
   fill: #111827;
 }
 
 .schematic-sheet-meta {
-  font-size: 9px;
   fill: #475569;
 }
 
 .schematic-sheet-value {
-  font-size: 12px;
   fill: #111827;
 }
 
 .schematic-pin-name {
-  font-size: 10px;
   fill: #111827;
 }
 
 .schematic-pin-number {
-  font-size: 9px;
   fill: #64748b;
 }
 
 .schematic-placeholder-message {
-  font-size: 10px;
   fill: #7f1d1d;
 }
 
 .schematic-marker-text {
-  font-size: 10px;
   font-weight: 700;
   fill: #111827;
 }
 
 .schematic-debug-label {
-  font-size: 10px;
   fill: #0f172a;
 }
 
 .schematic-debug-fixture {
-  font-size: 11px;
   fill: #dc2626;
 }
 
