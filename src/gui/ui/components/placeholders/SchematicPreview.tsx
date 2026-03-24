@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { buildSchematicScene, fitViewportToBounds, getPageScene } from "@/lib/schematicScene";
+import { buildSchematicScene, fitViewportToContent, fitViewportToPage, getPageScene } from "@/lib/schematicScene";
 import { loadSchematicGeometry } from "@/lib/schematicPreview";
 import type {
   GraphicPrimitive,
@@ -27,7 +27,8 @@ export function SchematicPreview() {
   const [viewport, setViewport] = useState<ViewportState>({
     pageId: "",
     scale: 1,
-    pan: { x: 0, y: 0 }
+    pan: { x: 0, y: 0 },
+    mode: "content"
   });
 
   useEffect(() => {
@@ -50,7 +51,8 @@ export function SchematicPreview() {
         setViewport((current) => ({
           pageId: current.pageId || firstPage?.pageId || "",
           scale: current.scale,
-          pan: current.pan
+          pan: current.pan,
+          mode: current.mode
         }));
       } catch (loadError) {
         if (!cancelled) {
@@ -108,32 +110,43 @@ export function SchematicPreview() {
       return;
     }
 
-    const fitted = fitViewportToBounds(
-      activePage.contentBounds ?? activePage.bounds,
-      containerSize,
-      activePage.size
-    );
+    const fitted =
+      viewport.mode === "page"
+        ? fitViewportToPage(activePage.bounds, containerSize)
+        : fitViewportToContent(activePage.contentBounds ?? activePage.bounds, activePage.bounds, containerSize);
     setViewport((current) => ({
       pageId: activePage.pageId,
       scale: fitted.scale,
-      pan: fitted.pan
+      pan: fitted.pan,
+      mode: current.mode
     }));
-  }, [activePage?.pageId, activePage?.size.height, activePage?.size.width, containerSize.height, containerSize.width]);
+  }, [activePage?.pageId, activePage?.size.height, activePage?.size.width, containerSize.height, containerSize.width, viewport.mode]);
 
-  function handleFitToPage() {
+  function handleFitContent() {
     if (!activePage) {
       return;
     }
 
-    const fitted = fitViewportToBounds(
-      activePage.contentBounds ?? activePage.bounds,
-      containerSize,
-      activePage.size
-    );
+    const fitted = fitViewportToContent(activePage.contentBounds ?? activePage.bounds, activePage.bounds, containerSize);
     setViewport((current) => ({
       ...current,
       scale: fitted.scale,
-      pan: fitted.pan
+      pan: fitted.pan,
+      mode: "content"
+    }));
+  }
+
+  function handleFitPage() {
+    if (!activePage) {
+      return;
+    }
+
+    const fitted = fitViewportToPage(activePage.bounds, containerSize);
+    setViewport((current) => ({
+      ...current,
+      scale: fitted.scale,
+      pan: fitted.pan,
+      mode: "page"
     }));
   }
 
@@ -145,7 +158,7 @@ export function SchematicPreview() {
   }
 
   function handleReset() {
-    handleFitToPage();
+    handleFitContent();
   }
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
@@ -227,8 +240,11 @@ export function SchematicPreview() {
           <button type="button" className="schematic-chip" onClick={() => handleZoom(1 / 1.2)}>
             Zoom Out
           </button>
-          <button type="button" className="schematic-chip" onClick={handleReset}>
-            Fit
+          <button type="button" className="schematic-chip" onClick={handleFitContent}>
+            Fit Content
+          </button>
+          <button type="button" className="schematic-chip" onClick={handleFitPage}>
+            Fit Page
           </button>
         </div>
       </div>
@@ -247,30 +263,32 @@ export function SchematicPreview() {
             </pattern>
           </defs>
           <rect x={0} y={0} width={containerSize.width} height={containerSize.height} fill="#d5dbe3" />
-          <g transform={`translate(${viewport.pan.x} ${viewport.pan.y}) scale(${viewport.scale})`}>
-            <rect
-              x={0}
-              y={0}
-              width={activePage.size.width}
-              height={activePage.size.height}
-              fill="#fdfdfc"
-              stroke="#6b7280"
-              strokeWidth={1.2}
-            />
-            <rect
-              x={18}
-              y={18}
-              width={activePage.size.width - 36}
-              height={activePage.size.height - 36}
-              fill="url(#schematic-grid)"
-              opacity={0.55}
-            />
-            <PageFrame page={activePage} />
-            <PageWires page={activePage} />
-            <PageJunctions page={activePage} />
-            <PageSymbols page={activePage} />
-            <PageLabels page={activePage} />
-            <PageMarkers page={activePage} />
+          <g transform={`translate(${viewport.pan.x} ${viewport.pan.y})`}>
+            <g transform={`scale(${viewport.scale})`}>
+              <rect
+                x={0}
+                y={0}
+                width={activePage.size.width}
+                height={activePage.size.height}
+                fill="#fdfdfc"
+                stroke="#6b7280"
+                strokeWidth={1.2}
+              />
+              <rect
+                x={18}
+                y={18}
+                width={activePage.size.width - 36}
+                height={activePage.size.height - 36}
+                fill="url(#schematic-grid)"
+                opacity={0.55}
+              />
+              <PageFrame page={activePage} />
+              <PageWires page={activePage} />
+              <PageJunctions page={activePage} />
+              <PageSymbols page={activePage} />
+              <PageLabels page={activePage} />
+              <PageMarkers page={activePage} />
+            </g>
           </g>
         </svg>
       </div>
