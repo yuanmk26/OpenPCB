@@ -233,6 +233,19 @@
   text-decoration: underline;
 }
 
+.schematic-net-label-group {
+  cursor: pointer;
+}
+
+.schematic-net-label-group.is-selected .schematic-net-label {
+  fill: #1d4ed8;
+  font-weight: 700;
+}
+
+.schematic-net-label-selection {
+  pointer-events: none;
+}
+
 .schematic-title {
   fill: #111827;
 }

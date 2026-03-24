@@ -11,12 +11,14 @@ import {
   su
 } from "@/lib/schematicMetrics";
 import { loadSchematicGeometry } from "@/lib/schematicPreview";
-import type { SelectedSchematicComponent } from "@/types/ui";
+import type { SelectedSchematicItem } from "@/types/ui";
 import type {
   GraphicPrimitive,
+  NetLabel,
   Point,
   ResolvedPin,
   SchematicPageScene,
+  SchematicNet,
   SchematicScene,
   SymbolDefinition,
   ViewportState
@@ -29,11 +31,11 @@ const DRAG_PAN_CURVE_SCALE = 2;
 const CLICK_MOVE_TOLERANCE = 4;
 
 type SchematicPreviewProps = {
-  selectedInstanceId: string | null;
-  onSelectComponent: (component: SelectedSchematicComponent | null) => void;
+  selectedItem: SelectedSchematicItem | null;
+  onSelectItem: (item: SelectedSchematicItem | null) => void;
 };
 
-export function SchematicPreview({ selectedInstanceId, onSelectComponent }: SchematicPreviewProps) {
+export function SchematicPreview({ selectedItem, onSelectItem }: SchematicPreviewProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
   const dragState = useRef<{ active: boolean; pointerId: number; last: Point; moved: boolean }>({
@@ -405,7 +407,7 @@ export function SchematicPreview({ selectedInstanceId, onSelectComponent }: Sche
       return;
     }
 
-    onSelectComponent(null);
+    onSelectItem(null);
   }
 
   if (isLoading) {
@@ -511,13 +513,21 @@ export function SchematicPreview({ selectedInstanceId, onSelectComponent }: Sche
               <PageJunctions page={activePage} />
               <PageSymbols
                 page={activePage}
-                selectedInstanceId={selectedInstanceId}
+                selectedInstanceId={selectedItem?.kind === "component" ? selectedItem.instanceId : null}
                 onSelectComponent={(component) => {
                   suppressCanvasClickRef.current = false;
-                  onSelectComponent(component);
+                  onSelectItem(component);
                 }}
               />
-              <PageLabels page={activePage} />
+              <PageLabels
+                page={activePage}
+                nets={scene.nets}
+                selectedLabelId={selectedItem?.kind === "net" ? selectedItem.labelId : null}
+                onSelectNet={(item) => {
+                  suppressCanvasClickRef.current = false;
+                  onSelectItem(item);
+                }}
+              />
               <PageMarkers page={activePage} />
               {debugEnabled ? <DiagnosticFixture /> : null}
               {debugEnabled ? <DebugOverlay page={activePage} /> : null}
@@ -807,7 +817,7 @@ function PageSymbols({
 }: {
   page: SchematicPageScene;
   selectedInstanceId: string | null;
-  onSelectComponent: (component: SelectedSchematicComponent) => void;
+  onSelectComponent: (component: Extract<SelectedSchematicItem, { kind: "component" }>) => void;
 }) {
   return (
     <g className="schematic-layer-symbols">
@@ -829,6 +839,7 @@ function PageSymbols({
             onClick={(event: ReactMouseEvent<SVGRectElement>) => {
               event.stopPropagation();
               onSelectComponent({
+                kind: "component",
                 instanceId: instance.instanceId,
                 refdes: instance.refdes,
                 value: instance.value,
@@ -880,23 +891,96 @@ function PageSymbols({
   );
 }
 
-function PageLabels({ page }: { page: SchematicPageScene }) {
+function PageLabels({
+  page,
+  nets,
+  selectedLabelId,
+  onSelectNet
+}: {
+  page: SchematicPageScene;
+  nets: SchematicNet[];
+  selectedLabelId: string | null;
+  onSelectNet: (item: Extract<SelectedSchematicItem, { kind: "net" }>) => void;
+}) {
   return (
     <g className="schematic-layer-labels">
-      {page.labels.map((label) => (
-        <text
-          key={label.labelId}
-          className="schematic-net-label"
-          x={label.position.x}
-          y={label.position.y}
-          fontSize={SCHEMATIC_TEXT.netLabel}
-          transform={label.orientation === 0 ? undefined : `rotate(${label.orientation} ${label.position.x} ${label.position.y})`}
-        >
-          {label.text}
-        </text>
-      ))}
+      {page.labels.map((label) => {
+        const metrics = getNetLabelMetrics(label);
+        const net = nets.find((entry) => entry.netId === label.netId);
+        const labelCount = page.labels.filter((entry) => entry.netId === label.netId).length;
+        const isSelected = selectedLabelId === label.labelId;
+        const transform = label.orientation === 0 ? undefined : `rotate(${label.orientation} ${label.position.x} ${label.position.y})`;
+
+        return (
+          <g key={label.labelId} className={isSelected ? "schematic-net-label-group is-selected" : "schematic-net-label-group"} transform={transform}>
+            {isSelected ? (
+              <rect
+                className="schematic-net-label-selection"
+                x={metrics.x}
+                y={metrics.y}
+                width={metrics.width}
+                height={metrics.height}
+                rx={su(0.35)}
+                fill="#2563eb22"
+                stroke="#2563eb"
+                strokeWidth={SCHEMATIC_STROKE.overlay}
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
+            <rect
+              className="schematic-net-label-hitbox"
+              x={metrics.x}
+              y={metrics.y}
+              width={metrics.width}
+              height={metrics.height}
+              fill="transparent"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+              }}
+              onClick={(event: ReactMouseEvent<SVGRectElement>) => {
+                event.stopPropagation();
+                onSelectNet({
+                  kind: "net",
+                  netId: label.netId,
+                  name: net?.name ?? label.text,
+                  style: net?.style ?? "unknown",
+                  pageId: page.pageId,
+                  pageTitle: page.title,
+                  labelId: label.labelId,
+                  labelText: label.text,
+                  labelCount,
+                  statusMessage: net ? undefined : `Net definition missing for ${label.netId}.`
+                });
+              }}
+            />
+            <text
+              className="schematic-net-label"
+              x={label.position.x}
+              y={label.position.y}
+              fontSize={SCHEMATIC_TEXT.netLabel}
+            >
+              {label.text}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
+}
+
+function getNetLabelMetrics(label: NetLabel) {
+  const fontSize = SCHEMATIC_TEXT.netLabel;
+  const paddingX = su(0.5);
+  const paddingY = su(0.35);
+  const width = Math.max(fontSize * 1.6, label.text.length * fontSize * 0.68 + paddingX * 2);
+  const height = fontSize + paddingY * 2;
+
+  return {
+    x: label.position.x - paddingX,
+    y: label.position.y - fontSize + paddingY * -0.25,
+    width,
+    height
+  };
 }
 
 function PageMarkers({ page }: { page: SchematicPageScene }) {

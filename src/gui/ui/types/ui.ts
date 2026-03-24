@@ -13,6 +13,7 @@ export type PlaceholderCard = {
 };
 
 export type SelectedSchematicComponent = {
+  kind: "component";
   instanceId: string;
   refdes: string;
   value: string;
@@ -23,3 +24,18 @@ export type SelectedSchematicComponent = {
   isPlaceholder: boolean;
   statusMessage?: string;
 };
+
+export type SelectedSchematicNet = {
+  kind: "net";
+  netId: string;
+  name: string;
+  style: string;
+  pageId: string;
+  pageTitle: string;
+  labelId: string;
+  labelText: string;
+  labelCount: number;
+  statusMessage?: string;
+};
+
+export type SelectedSchematicItem = SelectedSchematicComponent | SelectedSchematicNet;

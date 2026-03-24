@@ -3,17 +3,17 @@ import { AppHeader } from "./components/shell/AppHeader";
 import { ChatColumn } from "./components/shell/ChatColumn";
 import { Workspace } from "./components/workspace/Workspace";
 import { RightPanel } from "./components/shell/RightPanel";
-import type { SelectedSchematicComponent, WorkspaceView } from "./types/ui";
+import type { SelectedSchematicItem, WorkspaceView } from "./types/ui";
 
 export default function App() {
   const [activeView, setActiveView] = useState<WorkspaceView>("files");
-  const [selectedComponent, setSelectedComponent] = useState<SelectedSchematicComponent | null>(null);
+  const [selectedItem, setSelectedItem] = useState<SelectedSchematicItem | null>(null);
 
   function handleActiveViewChange(view: WorkspaceView) {
     setActiveView(view);
 
     if (view !== "schematic") {
-      setSelectedComponent(null);
+      setSelectedItem(null);
     }
   }
 
@@ -25,10 +25,10 @@ export default function App() {
         <Workspace
           activeView={activeView}
           onActiveViewChange={handleActiveViewChange}
-          selectedComponent={selectedComponent}
-          onSelectComponent={setSelectedComponent}
+          selectedItem={selectedItem}
+          onSelectItem={setSelectedItem}
         />
-        <RightPanel activeView={activeView} selectedComponent={selectedComponent} />
+        <RightPanel activeView={activeView} selectedItem={selectedItem} />
       </div>
     </div>
   );

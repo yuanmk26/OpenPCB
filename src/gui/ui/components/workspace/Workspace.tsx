@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { FilesPanel } from "@/components/placeholders/FilesPanel";
 import { SchematicPreview } from "@/components/placeholders/SchematicPreview";
 import { LayoutPreview } from "@/components/placeholders/LayoutPreview";
-import type { SelectedSchematicComponent, WorkspaceView } from "@/types/ui";
+import type { SelectedSchematicItem, WorkspaceView } from "@/types/ui";
 
 const workspaceTabs: Array<{ id: WorkspaceView; label: string }> = [
   { id: "files", label: "Files" },
@@ -13,23 +13,22 @@ const workspaceTabs: Array<{ id: WorkspaceView; label: string }> = [
 type WorkspaceProps = {
   activeView: WorkspaceView;
   onActiveViewChange: (view: WorkspaceView) => void;
-  selectedComponent: SelectedSchematicComponent | null;
-  onSelectComponent: (component: SelectedSchematicComponent | null) => void;
+  selectedItem: SelectedSchematicItem | null;
+  onSelectItem: (item: SelectedSchematicItem | null) => void;
 };
 
 export function Workspace({
   activeView,
   onActiveViewChange,
-  selectedComponent,
-  onSelectComponent
+  selectedItem,
+  onSelectItem
 }: WorkspaceProps) {
-
   const activePanel = useMemo(() => {
     if (activeView === "schematic") {
       return (
         <SchematicPreview
-          selectedInstanceId={selectedComponent?.instanceId ?? null}
-          onSelectComponent={onSelectComponent}
+          selectedItem={selectedItem}
+          onSelectItem={onSelectItem}
         />
       );
     }
@@ -39,7 +38,7 @@ export function Workspace({
     }
 
     return <FilesPanel />;
-  }, [activeView, onSelectComponent, selectedComponent?.instanceId]);
+  }, [activeView, onSelectItem, selectedItem]);
 
   return (
     <main className="workspace">
