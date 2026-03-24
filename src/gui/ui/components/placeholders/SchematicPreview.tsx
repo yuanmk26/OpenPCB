@@ -227,10 +227,17 @@ export function SchematicPreview() {
       const pageFitted = fitViewportToPage(activePage.bounds, containerSize);
       const minScale = Math.max(Number((pageFitted.scale * 0.9).toFixed(6)), 0.0001);
       const zoomingIn = multiplier > 1;
+      const effectiveMultiplier = zoomingIn
+        ? current.scale < 0.02
+          ? 1.5
+          : 1.2
+        : current.scale < 0.03
+          ? 1 / 1.5
+          : 1 / 1.2;
       const useContentBase = current.mode === "page" && zoomingIn;
       const baseScale = current.scale;
       const basePan = current.pan;
-      const nextScale = Math.min(Math.max(Number((baseScale * multiplier).toFixed(4)), minScale), 4);
+      const nextScale = Math.min(Math.max(Number((baseScale * effectiveMultiplier).toFixed(6)), minScale), 4);
       const center = {
         x: containerSize.width / 2,
         y: containerSize.height / 2
