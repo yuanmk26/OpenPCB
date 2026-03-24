@@ -80,7 +80,7 @@ export const mockSchematicGeometry: SchematicGeometry = {
     {
       pageId: "page-power",
       title: "Power Input",
-      size: { width: 1400, height: 900 },
+      size: { width: 2800, height: 1800 },
       instances: [
         {
           instanceId: "j1",
@@ -154,7 +154,7 @@ export const mockSchematicGeometry: SchematicGeometry = {
     {
       pageId: "page-core",
       title: "MCU Core",
-      size: { width: 1600, height: 1000 },
+      size: { width: 3200, height: 2000 },
       instances: [
         {
           instanceId: "u1",
