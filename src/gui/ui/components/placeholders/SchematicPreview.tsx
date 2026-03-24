@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { buildSchematicScene, fitViewport, getPageScene } from "@/lib/schematicScene";
+import { buildSchematicScene, fitViewportToBounds, getPageScene } from "@/lib/schematicScene";
 import { loadSchematicGeometry } from "@/lib/schematicPreview";
 import type {
   GraphicPrimitive,
@@ -108,7 +108,11 @@ export function SchematicPreview() {
       return;
     }
 
-    const fitted = fitViewport(activePage.size, containerSize);
+    const fitted = fitViewportToBounds(
+      activePage.contentBounds ?? activePage.bounds,
+      containerSize,
+      activePage.size
+    );
     setViewport((current) => ({
       pageId: activePage.pageId,
       scale: fitted.scale,
@@ -121,7 +125,11 @@ export function SchematicPreview() {
       return;
     }
 
-    const fitted = fitViewport(activePage.size, containerSize);
+    const fitted = fitViewportToBounds(
+      activePage.contentBounds ?? activePage.bounds,
+      containerSize,
+      activePage.size
+    );
     setViewport((current) => ({
       ...current,
       scale: fitted.scale,
@@ -320,6 +328,7 @@ function PageWires({ page }: { page: SchematicPageScene }) {
           strokeWidth={wire.style === "clock" ? 1.8 : 1.4}
           strokeLinejoin="miter"
           strokeLinecap="square"
+          vectorEffect="non-scaling-stroke"
         />
       ))}
     </g>
@@ -330,7 +339,14 @@ function PageJunctions({ page }: { page: SchematicPageScene }) {
   return (
     <g className="schematic-layer-junctions">
       {page.junctions.map((junction) => (
-        <circle key={junction.junctionId} cx={junction.position.x} cy={junction.position.y} r={3.4} fill="#111827" />
+        <circle
+          key={junction.junctionId}
+          cx={junction.position.x}
+          cy={junction.position.y}
+          r={3.4}
+          fill="#111827"
+          vectorEffect="non-scaling-stroke"
+        />
       ))}
     </g>
   );
@@ -389,7 +405,7 @@ function PageMarkers({ page }: { page: SchematicPageScene }) {
     <g className="schematic-layer-markers">
       {page.markers.map((marker) => (
         <g key={marker.markerId} transform={`translate(${marker.position.x} ${marker.position.y})`}>
-          <circle r={6} fill="#f59e0b" stroke="#78350f" strokeWidth={0.8} />
+          <circle r={6} fill="#f59e0b" stroke="#78350f" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
           <text className="schematic-marker-text" x={0} y={2.8} textAnchor="middle">
             !
           </text>
@@ -427,9 +443,10 @@ function SymbolGraphic({
           y1={primitive.start.y}
           x2={primitive.end.x}
           y2={primitive.end.y}
-          stroke={primitive.stroke ?? "#111827"}
+          stroke={normalizeStrokeColor(primitive.stroke)}
           strokeWidth={primitive.strokeWidth ?? 1.4}
           strokeLinecap="square"
+          vectorEffect="non-scaling-stroke"
         />
       );
     case "pin_stub":
@@ -439,9 +456,10 @@ function SymbolGraphic({
           y1={primitive.start.y}
           x2={primitive.end.x}
           y2={primitive.end.y}
-          stroke={primitive.stroke ?? "#111827"}
+          stroke={normalizeStrokeColor(primitive.stroke)}
           strokeWidth={primitive.strokeWidth ?? 1.4}
           strokeLinecap="square"
+          vectorEffect="non-scaling-stroke"
         />
       );
     case "rect":
@@ -452,8 +470,9 @@ function SymbolGraphic({
           width={primitive.width}
           height={primitive.height}
           fill={primitive.fill ?? "none"}
-          stroke={primitive.stroke ?? "#111827"}
+          stroke={normalizeStrokeColor(primitive.stroke)}
           strokeWidth={primitive.strokeWidth ?? 1.4}
+          vectorEffect="non-scaling-stroke"
         />
       );
     case "circle":
@@ -463,8 +482,9 @@ function SymbolGraphic({
           cy={primitive.center.y}
           r={primitive.radius}
           fill={primitive.fill ?? "none"}
-          stroke={primitive.stroke ?? "#111827"}
+          stroke={normalizeStrokeColor(primitive.stroke)}
           strokeWidth={primitive.strokeWidth ?? 1.4}
+          vectorEffect="non-scaling-stroke"
         />
       );
     case "polyline":
@@ -472,10 +492,11 @@ function SymbolGraphic({
         <polyline
           points={primitive.points.map((point) => `${point.x},${point.y}`).join(" ")}
           fill={primitive.fill ?? "none"}
-          stroke={primitive.stroke ?? "#111827"}
+          stroke={normalizeStrokeColor(primitive.stroke)}
           strokeWidth={primitive.strokeWidth ?? 1.4}
           strokeLinejoin="miter"
           strokeLinecap="square"
+          vectorEffect="non-scaling-stroke"
         />
       );
     case "text":
@@ -497,4 +518,18 @@ function SymbolGraphic({
       Unsupported primitive
     </text>
   );
+}
+
+function normalizeStrokeColor(stroke?: string): string {
+  if (!stroke) {
+    return "#111827";
+  }
+
+  const normalized = stroke.trim().toLowerCase();
+
+  if (normalized === "#dfe8f1" || normalized === "#eef2f7" || normalized === "#ffffff") {
+    return "#111827";
+  }
+
+  return stroke;
 }
