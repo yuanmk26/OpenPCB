@@ -213,3 +213,7 @@ tests/demo/
 # Node.js
 node_modules/
 
+# Frontend source libraries
+!src/gui/ui/lib/
+!src/gui/ui/lib/**
+
