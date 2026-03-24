@@ -196,10 +196,31 @@ export function SchematicPreview() {
   }
 
   function handleZoom(multiplier: number) {
-    setViewport((current) => ({
-      ...current,
-      scale: Math.min(Math.max(Number((current.scale * multiplier).toFixed(3)), 0.25), 4)
-    }));
+    if (!activePage) {
+      return;
+    }
+
+    setViewport((current) => {
+      const nextScale = Math.min(Math.max(Number((current.scale * multiplier).toFixed(3)), 0.25), 4);
+      const center = {
+        x: containerSize.width / 2,
+        y: containerSize.height / 2
+      };
+      const worldCenter = {
+        x: (center.x - current.pan.x) / current.scale,
+        y: (center.y - current.pan.y) / current.scale
+      };
+      const nextPan = {
+        x: center.x - worldCenter.x * nextScale,
+        y: center.y - worldCenter.y * nextScale
+      };
+
+      return {
+        ...current,
+        scale: nextScale,
+        pan: clampViewportPan(activePage, containerSize, nextScale, nextPan)
+      };
+    });
   }
 
   function handleReset() {
@@ -225,12 +246,16 @@ export function SchematicPreview() {
 
     dragState.current.last = { x: event.clientX, y: event.clientY };
 
+    if (!activePage) {
+      return;
+    }
+
     setViewport((current) => ({
       ...current,
-      pan: {
+      pan: clampViewportPan(activePage, containerSize, current.scale, {
         x: current.pan.x + deltaX,
         y: current.pan.y + deltaY
-      }
+      })
     }));
   }
 
@@ -430,6 +455,44 @@ function LocatorCircle() {
       </text>
     </g>
   );
+}
+
+function clampViewportPan(
+  page: SchematicPageScene,
+  containerSize: { width: number; height: number },
+  scale: number,
+  pan: Point
+): Point {
+  const safeWidth = Math.max(containerSize.width, 1);
+  const safeHeight = Math.max(containerSize.height, 1);
+  const scaledWidth = page.bounds.width * scale;
+  const scaledHeight = page.bounds.height * scale;
+  const visibleMarginX = Math.min(safeWidth * 0.35, su(8));
+  const visibleMarginY = Math.min(safeHeight * 0.35, su(8));
+
+  const minPanX = safeWidth - visibleMarginX - scaledWidth;
+  const maxPanX = visibleMarginX;
+  const minPanY = safeHeight - visibleMarginY - scaledHeight;
+  const maxPanY = visibleMarginY;
+
+  return {
+    x: clampPanAxis(pan.x, minPanX, maxPanX, safeWidth, scaledWidth),
+    y: clampPanAxis(pan.y, minPanY, maxPanY, safeHeight, scaledHeight)
+  };
+}
+
+function clampPanAxis(
+  value: number,
+  minValue: number,
+  maxValue: number,
+  viewportSize: number,
+  contentSize: number
+): number {
+  if (contentSize <= viewportSize) {
+    return Math.min(Math.max(value, minValue), maxValue);
+  }
+
+  return Math.min(Math.max(value, minValue), maxValue);
 }
 
 function DiagnosticFixture() {
