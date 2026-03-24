@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppHeader } from "./components/shell/AppHeader";
 import { ChatColumn } from "./components/shell/ChatColumn";
 import { Workspace } from "./components/workspace/Workspace";
@@ -8,6 +8,23 @@ import type { SelectedSchematicItem, WorkspaceView } from "./types/ui";
 export default function App() {
   const [activeView, setActiveView] = useState<WorkspaceView>("files");
   const [selectedItem, setSelectedItem] = useState<SelectedSchematicItem | null>(null);
+
+  useEffect(() => {
+    if (activeView !== "schematic" || !selectedItem) {
+      return;
+    }
+
+    const handleContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+      setSelectedItem(null);
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, [activeView, selectedItem]);
 
   function handleActiveViewChange(view: WorkspaceView) {
     setActiveView(view);
