@@ -197,6 +197,7 @@ export type SchematicPageScene = {
   title: string;
   size: PageSize;
   bounds: Bounds;
+  contentBounds: Bounds | null;
   instances: ResolvedInstance[];
   wires: WireSegment[];
   labels: NetLabel[];
