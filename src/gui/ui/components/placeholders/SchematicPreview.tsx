@@ -22,6 +22,9 @@ import type {
 } from "@/types/schematic";
 
 const GRID_STEP = SCHEMATIC_PAGE_GRID_STEP;
+const DRAG_PAN_MIN_FACTOR = 0.12;
+const DRAG_PAN_MAX_FACTOR = 0.55;
+const DRAG_PAN_CURVE_SCALE = 12;
 
 export function SchematicPreview() {
   const viewportRef = useRef<HTMLDivElement | null>(null);
@@ -554,19 +557,8 @@ function formatViewportPercent(scale: number): string {
 }
 
 function getDragPanFactor(scale: number): number {
-  if (scale < 0.02) {
-    return 0.12;
-  }
-
-  if (scale < 0.05) {
-    return 0.22;
-  }
-
-  if (scale < 0.1) {
-    return 0.35;
-  }
-
-  return 0.55;
+  const normalized = 1 - Math.exp(-Math.max(scale, 0) * DRAG_PAN_CURVE_SCALE);
+  return DRAG_PAN_MIN_FACTOR + (DRAG_PAN_MAX_FACTOR - DRAG_PAN_MIN_FACTOR) * normalized;
 }
 
 function DiagnosticFixture() {
