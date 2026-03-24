@@ -224,11 +224,13 @@ export function SchematicPreview() {
     }
 
     setViewport((current) => {
+      const pageFitted = fitViewportToPage(activePage.bounds, containerSize);
+      const minScale = Math.max(Number((pageFitted.scale * 0.98).toFixed(4)), 0.01);
       const zoomingIn = multiplier > 1;
       const useContentBase = current.mode === "page" && zoomingIn;
       const baseScale = current.scale;
       const basePan = current.pan;
-      const nextScale = Math.min(Math.max(Number((baseScale * multiplier).toFixed(3)), 0.25), 4);
+      const nextScale = Math.min(Math.max(Number((baseScale * multiplier).toFixed(4)), minScale), 4);
       const center = {
         x: containerSize.width / 2,
         y: containerSize.height / 2
@@ -414,7 +416,7 @@ export function SchematicPreview() {
           {activePage.title} - {activePage.size.width} x {activePage.size.height}
         </span>
         <span>
-          {viewport.mode} · {Math.round(viewport.scale * 100)}% · pan({Math.round(viewport.pan.x)},{Math.round(viewport.pan.y)})
+          {viewport.mode} · {(viewport.scale * 100).toFixed(1)}% · pan({Math.round(viewport.pan.x)},{Math.round(viewport.pan.y)})
         </span>
         {renderSummary ? (
           <span>
