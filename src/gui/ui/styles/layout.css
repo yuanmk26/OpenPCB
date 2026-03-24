@@ -132,9 +132,9 @@
 .schematic-toolbar,
 .schematic-statusbar,
 .schematic-viewer-empty {
-  border: 1px solid #2a3b50;
+  border: 1px solid #c5ced8;
   border-radius: 12px;
-  background: #162232;
+  background: #eef2f6;
 }
 
 .schematic-toolbar {
@@ -152,27 +152,25 @@
 }
 
 .schematic-chip {
-  border: 1px solid #345271;
-  background: #122131;
-  color: #d8e5f2;
-  border-radius: 999px;
+  border: 1px solid #9aa8b8;
+  background: #ffffff;
+  color: #1f2937;
+  border-radius: 6px;
   padding: 7px 12px;
   font-size: 12px;
   cursor: pointer;
 }
 
 .schematic-chip.is-active {
-  background: #21415f;
-  border-color: #5d8ab6;
+  background: #dbe7f3;
+  border-color: #64748b;
 }
 
 .schematic-stage {
   min-height: 520px;
-  border: 1px solid #2a3b50;
-  border-radius: 16px;
-  background:
-    radial-gradient(circle at top left, rgba(54, 100, 150, 0.2), transparent 26%),
-    linear-gradient(180deg, #0d1621 0%, #0f1720 100%);
+  border: 1px solid #b9c2cd;
+  border-radius: 10px;
+  background: #cfd7df;
   overflow: hidden;
 }
 
@@ -193,7 +191,7 @@
   justify-content: space-between;
   gap: 16px;
   padding: 10px 14px;
-  color: #98acc2;
+  color: #475569;
   font-size: 12px;
 }
 
@@ -210,41 +208,61 @@
 }
 
 .schematic-viewer-empty p {
-  color: #9eb1c6;
+  color: #64748b;
   font-size: 13px;
-}
-
-.schematic-refdes,
-.schematic-value,
-.schematic-net-label,
-.schematic-marker-message,
-.schematic-marker-text {
-  fill: #e6edf4;
-  font-size: 14px;
 }
 
 .schematic-refdes {
-  font-size: 13px;
-  fill: #7dd3fc;
+  font-size: 12px;
+  fill: #111827;
+  font-weight: 700;
 }
 
 .schematic-value {
   font-size: 12px;
-  fill: #99aeca;
+  fill: #111827;
 }
 
 .schematic-net-label {
-  font-size: 13px;
+  font-size: 12px;
+  fill: #111827;
+  text-decoration: underline;
+}
+
+.schematic-title {
+  font-size: 18px;
+  fill: #111827;
+}
+
+.schematic-sheet-meta {
+  font-size: 9px;
+  fill: #475569;
+}
+
+.schematic-sheet-value {
+  font-size: 12px;
+  fill: #111827;
+}
+
+.schematic-pin-name {
+  font-size: 10px;
+  fill: #111827;
+}
+
+.schematic-pin-number {
+  font-size: 9px;
+  fill: #64748b;
+}
+
+.schematic-placeholder-message {
+  font-size: 10px;
+  fill: #7f1d1d;
 }
 
 .schematic-marker-text {
-  font-size: 16px;
+  font-size: 10px;
   font-weight: 700;
-}
-
-.schematic-marker-message {
-  font-size: 12px;
-  fill: #f1d39a;
+  fill: #111827;
 }
 
 .chat-column .placeholder-card,
