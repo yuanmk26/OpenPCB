@@ -52,6 +52,11 @@ npm.cmd run tauri dev
 - Header + Sidebar + Workspace + Right Panel
 - Placeholder cards for requirement/chat/schematic/layout/planner/logs
 - Tauri bridge entry placeholder in `ui/lib/tauri.ts`
+- Schematic preview mock renderer with page switching, fit modes, pan, wheel zoom, and debug overlay
+
+## GUI Docs
+- [GUI architecture](./architecture.md)
+- [Schematic preview](./schematic-preview.md)
 
 ## Next Extensions
 - Add typed Tauri commands and events in `ui/lib/tauri.ts`
