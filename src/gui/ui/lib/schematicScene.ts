@@ -55,9 +55,11 @@ export function fitViewportToPage(
   const padding = SCHEMATIC_VIEWPORT_PAGE_PADDING;
   const targetWidth = Math.max(pageBounds.width, 1);
   const targetHeight = Math.max(pageBounds.height, 1);
+  const availableWidth = Math.max(safeWidth - padding * 2, 1);
+  const availableHeight = Math.max(safeHeight - padding * 2, 1);
   const scale = Math.min(
-    (safeWidth - padding * 2) / targetWidth,
-    (safeHeight - padding * 2) / targetHeight
+    availableWidth / targetWidth,
+    availableHeight / targetHeight
   );
   const normalizedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
   const scaledWidth = pageBounds.width * normalizedScale;
@@ -81,13 +83,17 @@ export function fitViewportToContent(
   const safeHeight = Math.max(containerSize.height, 1);
   const contentPadding = SCHEMATIC_VIEWPORT_CONTENT_PADDING;
   const pagePadding = SCHEMATIC_VIEWPORT_CONTENT_EDGE_PADDING;
+  const availableContentWidth = Math.max(safeWidth - contentPadding * 2, 1);
+  const availableContentHeight = Math.max(safeHeight - contentPadding * 2, 1);
+  const availablePageWidth = Math.max(safeWidth - pagePadding * 2, 1);
+  const availablePageHeight = Math.max(safeHeight - pagePadding * 2, 1);
   const contentScale = Math.min(
-    (safeWidth - contentPadding * 2) / Math.max(contentBounds.width, 1),
-    (safeHeight - contentPadding * 2) / Math.max(contentBounds.height, 1)
+    availableContentWidth / Math.max(contentBounds.width, 1),
+    availableContentHeight / Math.max(contentBounds.height, 1)
   );
   const pageScale = Math.min(
-    (safeWidth - pagePadding * 2) / Math.max(pageBounds.width, 1),
-    (safeHeight - pagePadding * 2) / Math.max(pageBounds.height, 1)
+    availablePageWidth / Math.max(pageBounds.width, 1),
+    availablePageHeight / Math.max(pageBounds.height, 1)
   );
   const scale = Math.min(contentScale, pageScale);
   const normalizedScale = Number.isFinite(scale) && scale > 0 ? scale : 1;

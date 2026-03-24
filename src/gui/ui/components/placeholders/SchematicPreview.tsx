@@ -90,16 +90,35 @@ export function SchematicPreview() {
       return;
     }
 
+    const updateContainerSize = () => {
+      const rect = element.getBoundingClientRect();
+      setContainerSize({
+        width: Math.max(Math.round(rect.width), 1),
+        height: Math.max(Math.round(rect.height), 1)
+      });
+    };
+
+    updateContainerSize();
+
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
 
       if (!entry) {
+        updateContainerSize();
+        return;
+      }
+
+      const nextWidth = Math.max(Math.round(entry.contentRect.width), 1);
+      const nextHeight = Math.max(Math.round(entry.contentRect.height), 1);
+
+      if (nextWidth <= 1 || nextHeight <= 1) {
+        updateContainerSize();
         return;
       }
 
       setContainerSize({
-        width: entry.contentRect.width,
-        height: entry.contentRect.height
+        width: nextWidth,
+        height: nextHeight
       });
     });
 
