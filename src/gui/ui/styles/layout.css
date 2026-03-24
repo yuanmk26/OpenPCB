@@ -265,6 +265,16 @@
   fill: #111827;
 }
 
+.schematic-debug-label {
+  font-size: 10px;
+  fill: #0f172a;
+}
+
+.schematic-debug-fixture {
+  font-size: 11px;
+  fill: #dc2626;
+}
+
 .chat-column .placeholder-card,
 .workspace-content .placeholder-card {
   min-height: 100%;
