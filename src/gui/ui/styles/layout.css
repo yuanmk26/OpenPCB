@@ -175,6 +175,8 @@
   border-radius: 10px;
   background: #cfd7df;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .schematic-canvas {
@@ -183,6 +185,8 @@
   display: block;
   touch-action: none;
   cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .schematic-canvas:active {

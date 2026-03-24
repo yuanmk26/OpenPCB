@@ -316,6 +316,7 @@ export function SchematicPreview() {
   }
 
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
+    event.preventDefault();
     dragState.current = {
       active: true,
       pointerId: event.pointerId,
@@ -329,6 +330,7 @@ export function SchematicPreview() {
       return;
     }
 
+    event.preventDefault();
     const deltaX = event.clientX - dragState.current.last.x;
     const deltaY = event.clientY - dragState.current.last.y;
 
@@ -350,6 +352,7 @@ export function SchematicPreview() {
 
   function handlePointerUp(event: ReactPointerEvent<SVGSVGElement>) {
     if (dragState.current.pointerId === event.pointerId) {
+      event.preventDefault();
       dragState.current.active = false;
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
