@@ -296,8 +296,8 @@ export function SchematicPreview() {
     setViewport((current) => ({
       ...current,
       pan: clampViewportPan(activePage, containerSize, current.scale, {
-        x: current.pan.x + deltaX,
-        y: current.pan.y + deltaY
+        x: current.pan.x + deltaX * getDragPanFactor(current.scale),
+        y: current.pan.y + deltaY * getDragPanFactor(current.scale)
       }),
       mode: "manual"
     }));
@@ -551,6 +551,22 @@ function formatViewportPercent(scale: number): string {
   }
 
   return `${Math.round(percent)}%`;
+}
+
+function getDragPanFactor(scale: number): number {
+  if (scale < 0.02) {
+    return 0.2;
+  }
+
+  if (scale < 0.05) {
+    return 0.35;
+  }
+
+  if (scale < 0.1) {
+    return 0.5;
+  }
+
+  return 0.75;
 }
 
 function DiagnosticFixture() {
