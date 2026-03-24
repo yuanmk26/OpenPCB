@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import { buildSchematicScene, fitViewportToContent, fitViewportToPage, getPageScene } from "@/lib/schematicScene";
 import {
   SCHEMATIC_PAGE_FRAME_INSET,
@@ -821,22 +821,18 @@ function PageSymbols({
 }) {
   return (
     <g className="schematic-layer-symbols">
-      {page.instances.map((instance) => (
-        <g
-          key={instance.instanceId}
-          className={selectedInstanceId === instance.instanceId ? "schematic-instance is-selected" : "schematic-instance"}
-        >
-          <rect
-            className="schematic-instance-hitbox"
-            x={instance.bounds.x}
-            y={instance.bounds.y}
-            width={instance.bounds.width}
-            height={instance.bounds.height}
-            fill="transparent"
+      {page.instances.map((instance) => {
+        const hitBounds = getInstanceHitBounds(instance);
+        const selectionBounds = expandBounds(hitBounds, su(0.6));
+
+        return (
+          <g
+            key={instance.instanceId}
+            className={selectedInstanceId === instance.instanceId ? "schematic-instance is-selected" : "schematic-instance"}
             onPointerDown={(event) => {
               event.stopPropagation();
             }}
-            onClick={(event: ReactMouseEvent<SVGRectElement>) => {
+            onClick={(event) => {
               event.stopPropagation();
               onSelectComponent({
                 kind: "component",
@@ -851,42 +847,51 @@ function PageSymbols({
                 statusMessage: instance.placeholderMessage
               });
             }}
-          />
-          {selectedInstanceId === instance.instanceId ? (
+          >
             <rect
-              className="schematic-instance-selection"
-              x={instance.bounds.x - su(0.6)}
-              y={instance.bounds.y - su(0.6)}
-              width={instance.bounds.width + su(1.2)}
-              height={instance.bounds.height + su(1.2)}
-              rx={su(0.4)}
-              fill="#60a5fa22"
-              stroke="#2563eb"
-              strokeWidth={SCHEMATIC_STROKE.overlay}
-              vectorEffect="non-scaling-stroke"
+              className="schematic-instance-hitbox"
+              x={hitBounds.x}
+              y={hitBounds.y}
+              width={hitBounds.width}
+              height={hitBounds.height}
+              fill="transparent"
             />
-          ) : null}
-          <g transform={instance.transform}>
-            {instance.symbol.graphics.map((graphic) => (
-              <SymbolGraphic key={graphic.id} primitive={graphic} symbol={instance.symbol} />
+            {selectedInstanceId === instance.instanceId ? (
+              <rect
+                className="schematic-instance-selection"
+                x={selectionBounds.x}
+                y={selectionBounds.y}
+                width={selectionBounds.width}
+                height={selectionBounds.height}
+                rx={su(0.4)}
+                fill="#60a5fa22"
+                stroke="#2563eb"
+                strokeWidth={SCHEMATIC_STROKE.overlay}
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
+            <g transform={instance.transform}>
+              {instance.symbol.graphics.map((graphic) => (
+                <SymbolGraphic key={graphic.id} primitive={graphic} symbol={instance.symbol} />
+              ))}
+            </g>
+            <text className="schematic-refdes" x={instance.refdesPosition.x} y={instance.refdesPosition.y} fontSize={SCHEMATIC_TEXT.refdes}>
+              {instance.refdes}
+            </text>
+            <text className="schematic-value" x={instance.valuePosition.x} y={instance.valuePosition.y} fontSize={SCHEMATIC_TEXT.value}>
+              {instance.value}
+            </text>
+            {instance.placeholderMessage ? (
+              <text className="schematic-placeholder-message" x={instance.bounds.x + su(0.5)} y={instance.bounds.y + instance.bounds.height + su(2)} fontSize={SCHEMATIC_TEXT.placeholder}>
+                {instance.placeholderMessage}
+              </text>
+            ) : null}
+            {instance.renderedPins.map((pin) => (
+              <PinText key={pin.pinId} pin={pin} />
             ))}
           </g>
-          <text className="schematic-refdes" x={instance.refdesPosition.x} y={instance.refdesPosition.y} fontSize={SCHEMATIC_TEXT.refdes}>
-            {instance.refdes}
-          </text>
-          <text className="schematic-value" x={instance.valuePosition.x} y={instance.valuePosition.y} fontSize={SCHEMATIC_TEXT.value}>
-            {instance.value}
-          </text>
-          {instance.placeholderMessage ? (
-            <text className="schematic-placeholder-message" x={instance.bounds.x + su(0.5)} y={instance.bounds.y + instance.bounds.height + su(2)} fontSize={SCHEMATIC_TEXT.placeholder}>
-              {instance.placeholderMessage}
-            </text>
-          ) : null}
-          {instance.renderedPins.map((pin) => (
-            <PinText key={pin.pinId} pin={pin} />
-          ))}
-        </g>
-      ))}
+        );
+      })}
     </g>
   );
 }
@@ -912,7 +917,29 @@ function PageLabels({
         const transform = label.orientation === 0 ? undefined : `rotate(${label.orientation} ${label.position.x} ${label.position.y})`;
 
         return (
-          <g key={label.labelId} className={isSelected ? "schematic-net-label-group is-selected" : "schematic-net-label-group"} transform={transform}>
+          <g
+            key={label.labelId}
+            className={isSelected ? "schematic-net-label-group is-selected" : "schematic-net-label-group"}
+            transform={transform}
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event) => {
+              event.stopPropagation();
+              onSelectNet({
+                kind: "net",
+                netId: label.netId,
+                name: net?.name ?? label.text,
+                style: net?.style ?? "unknown",
+                pageId: page.pageId,
+                pageTitle: page.title,
+                labelId: label.labelId,
+                labelText: label.text,
+                labelCount,
+                statusMessage: net ? undefined : `Net definition missing for ${label.netId}.`
+              });
+            }}
+          >
             {isSelected ? (
               <rect
                 className="schematic-net-label-selection"
@@ -934,24 +961,6 @@ function PageLabels({
               width={metrics.width}
               height={metrics.height}
               fill="transparent"
-              onPointerDown={(event) => {
-                event.stopPropagation();
-              }}
-              onClick={(event: ReactMouseEvent<SVGRectElement>) => {
-                event.stopPropagation();
-                onSelectNet({
-                  kind: "net",
-                  netId: label.netId,
-                  name: net?.name ?? label.text,
-                  style: net?.style ?? "unknown",
-                  pageId: page.pageId,
-                  pageTitle: page.title,
-                  labelId: label.labelId,
-                  labelText: label.text,
-                  labelCount,
-                  statusMessage: net ? undefined : `Net definition missing for ${label.netId}.`
-                });
-              }}
             />
             <text
               className="schematic-net-label"
@@ -981,6 +990,41 @@ function getNetLabelMetrics(label: NetLabel) {
     width,
     height
   };
+}
+
+function getInstanceHitBounds(instance: SchematicPageScene["instances"][number]) {
+  const textPaddingX = su(0.75);
+  const textPaddingTop = SCHEMATIC_TEXT.refdes;
+  const textPaddingBottom = su(0.5);
+
+  const minX = Math.min(instance.bounds.x, instance.refdesPosition.x - textPaddingX, instance.valuePosition.x - textPaddingX);
+  const minY = Math.min(instance.bounds.y, instance.refdesPosition.y - textPaddingTop, instance.valuePosition.y - textPaddingTop);
+  const maxX = Math.max(
+    instance.bounds.x + instance.bounds.width,
+    instance.refdesPosition.x + estimateTextWidth(instance.refdes, SCHEMATIC_TEXT.refdes) + textPaddingX,
+    instance.valuePosition.x + estimateTextWidth(instance.value, SCHEMATIC_TEXT.value) + textPaddingX
+  );
+  const maxY = Math.max(instance.bounds.y + instance.bounds.height, instance.refdesPosition.y + textPaddingBottom, instance.valuePosition.y + textPaddingBottom);
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY
+  };
+}
+
+function expandBounds(bounds: { x: number; y: number; width: number; height: number }, padding: number) {
+  return {
+    x: bounds.x - padding,
+    y: bounds.y - padding,
+    width: bounds.width + padding * 2,
+    height: bounds.height + padding * 2
+  };
+}
+
+function estimateTextWidth(text: string, fontSize: number) {
+  return Math.max(fontSize, text.length * fontSize * 0.68);
 }
 
 function PageMarkers({ page }: { page: SchematicPageScene }) {
