@@ -116,6 +116,21 @@ export function SchematicPreview() {
     return getPageScene(scene, viewport.pageId) ?? scene.pages[0] ?? null;
   }, [scene, viewport.pageId]);
 
+  const renderSummary = useMemo(() => {
+    if (!activePage) {
+      return null;
+    }
+
+    return {
+      instances: activePage.instances.length,
+      symbolGraphics: activePage.instances.reduce((count, instance) => count + instance.symbol.graphics.length, 0),
+      wires: activePage.wires.length,
+      labels: activePage.labels.length,
+      junctions: activePage.junctions.length,
+      markers: activePage.markers.length
+    };
+  }, [activePage]);
+
   useEffect(() => {
     if (!activePage) {
       return;
@@ -301,6 +316,7 @@ export function SchematicPreview() {
                 fill="url(#schematic-grid)"
                 opacity={0.32}
               />
+              <LocatorCircle />
               <PageFrame page={activePage} />
               <PageWires page={activePage} />
               <PageJunctions page={activePage} />
@@ -321,6 +337,11 @@ export function SchematicPreview() {
         <span>
           {viewport.mode} · {Math.round(viewport.scale * 100)}% · pan({Math.round(viewport.pan.x)},{Math.round(viewport.pan.y)})
         </span>
+        {renderSummary ? (
+          <span>
+            instances[{renderSummary.instances}] graphics[{renderSummary.symbolGraphics}] wires[{renderSummary.wires}] labels[{renderSummary.labels}] junctions[{renderSummary.junctions}] markers[{renderSummary.markers}]
+          </span>
+        ) : null}
         {debugEnabled ? (
           <span>
             page[{Math.round(activePage.bounds.x)},{Math.round(activePage.bounds.y)},{Math.round(activePage.bounds.width)},{Math.round(activePage.bounds.height)}]
@@ -371,6 +392,23 @@ function DebugScreenGrid({ width, height }: { width: number; height: number }) {
       <line x1={0} y1={0} x2={70} y2={0} stroke="#dc2626" strokeWidth={1.2} />
       <line x1={0} y1={0} x2={0} y2={70} stroke="#2563eb" strokeWidth={1.2} />
       <text x={6} y={84} className="schematic-debug-label" fontSize={SCHEMATIC_TEXT.debugLabel}>origin</text>
+    </g>
+  );
+}
+
+function LocatorCircle() {
+  const centerX = su(12);
+  const centerY = su(12);
+  const radius = su(3);
+
+  return (
+    <g className="schematic-locator-circle">
+      <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke="#dc2626" strokeWidth={SCHEMATIC_STROKE.overlay} />
+      <line x1={centerX - radius - su(1)} y1={centerY} x2={centerX + radius + su(1)} y2={centerY} stroke="#dc2626" strokeWidth={SCHEMATIC_STROKE.debug} />
+      <line x1={centerX} y1={centerY - radius - su(1)} x2={centerX} y2={centerY + radius + su(1)} stroke="#dc2626" strokeWidth={SCHEMATIC_STROKE.debug} />
+      <text x={centerX + su(4)} y={centerY + su(0.5)} fill="#dc2626" fontSize={SCHEMATIC_TEXT.debugFixture}>
+        LOCATOR
+      </text>
     </g>
   );
 }
