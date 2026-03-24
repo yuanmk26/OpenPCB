@@ -28,6 +28,7 @@ const DRAG_PAN_CURVE_SCALE = 2;
 
 export function SchematicPreview() {
   const viewportRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<SVGSVGElement | null>(null);
   const dragState = useRef<{ active: boolean; pointerId: number; last: Point }>({
     active: false,
     pointerId: -1,
@@ -128,6 +129,23 @@ export function SchematicPreview() {
     observer.observe(element);
 
     return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    const handlePointerLockChange = () => {
+      if (document.pointerLockElement === canvasRef.current) {
+        return;
+      }
+
+      dragState.current.active = false;
+      dragState.current.pointerId = -1;
+    };
+
+    document.addEventListener("pointerlockchange", handlePointerLockChange);
+
+    return () => {
+      document.removeEventListener("pointerlockchange", handlePointerLockChange);
+    };
   }, []);
 
   const activePage = useMemo(() => {
@@ -323,6 +341,9 @@ export function SchematicPreview() {
       last: { x: event.clientX, y: event.clientY }
     };
     event.currentTarget.setPointerCapture(event.pointerId);
+    if (document.pointerLockElement !== event.currentTarget && typeof event.currentTarget.requestPointerLock === "function") {
+      event.currentTarget.requestPointerLock();
+    }
   }
 
   function handlePointerMove(event: ReactPointerEvent<SVGSVGElement>) {
@@ -331,8 +352,9 @@ export function SchematicPreview() {
     }
 
     event.preventDefault();
-    const deltaX = event.clientX - dragState.current.last.x;
-    const deltaY = event.clientY - dragState.current.last.y;
+    const pointerLocked = document.pointerLockElement === event.currentTarget;
+    const deltaX = pointerLocked ? event.movementX : event.clientX - dragState.current.last.x;
+    const deltaY = pointerLocked ? event.movementY : event.clientY - dragState.current.last.y;
 
     dragState.current.last = { x: event.clientX, y: event.clientY };
 
@@ -354,7 +376,11 @@ export function SchematicPreview() {
     if (dragState.current.pointerId === event.pointerId) {
       event.preventDefault();
       dragState.current.active = false;
+      dragState.current.pointerId = -1;
       event.currentTarget.releasePointerCapture(event.pointerId);
+      if (document.pointerLockElement === event.currentTarget) {
+        void document.exitPointerLock();
+      }
     }
   }
 
@@ -419,6 +445,7 @@ export function SchematicPreview() {
       </div>
       <div className="schematic-stage" ref={viewportRef}>
         <svg
+          ref={canvasRef}
           className="schematic-canvas"
           viewBox={`0 0 ${containerSize.width} ${containerSize.height}`}
           onPointerDown={handlePointerDown}
