@@ -12,9 +12,9 @@ export const mockSchematicGeometry: SchematicGeometry = {
         { pinId: "gnd", number: "A1", name: "GND", anchor: { x: 110, y: 70 }, direction: "right" }
       ],
       graphics: [
-        { id: "body", type: "rect", origin: { x: 10, y: 10 }, width: 80, height: 70, stroke: "#dfe8f1" },
-        { id: "p1", type: "pin_stub", start: { x: 90, y: 20 }, end: { x: 110, y: 20 }, stroke: "#dfe8f1" },
-        { id: "p2", type: "pin_stub", start: { x: 90, y: 70 }, end: { x: 110, y: 70 }, stroke: "#dfe8f1" },
+        { id: "body", type: "rect", origin: { x: 10, y: 10 }, width: 80, height: 70, stroke: "#111827" },
+        { id: "p1", type: "pin_stub", start: { x: 90, y: 20 }, end: { x: 110, y: 20 }, stroke: "#111827" },
+        { id: "p2", type: "pin_stub", start: { x: 90, y: 70 }, end: { x: 110, y: 70 }, stroke: "#111827" },
         { id: "t1", type: "text", position: { x: 50, y: 48 }, text: "USB-C", anchor: "middle", fontSize: 16 }
       ]
     },
@@ -28,10 +28,10 @@ export const mockSchematicGeometry: SchematicGeometry = {
         { pinId: "vout", number: "3", name: "VOUT", anchor: { x: 140, y: 28 }, direction: "right" }
       ],
       graphics: [
-        { id: "body", type: "rect", origin: { x: 25, y: 12 }, width: 90, height: 70, stroke: "#dfe8f1" },
-        { id: "vin", type: "pin_stub", start: { x: 0, y: 28 }, end: { x: 25, y: 28 }, stroke: "#dfe8f1" },
-        { id: "vout", type: "pin_stub", start: { x: 115, y: 28 }, end: { x: 140, y: 28 }, stroke: "#dfe8f1" },
-        { id: "gnd", type: "pin_stub", start: { x: 70, y: 82 }, end: { x: 70, y: 110 }, stroke: "#dfe8f1" },
+        { id: "body", type: "rect", origin: { x: 25, y: 12 }, width: 90, height: 70, stroke: "#111827" },
+        { id: "vin", type: "pin_stub", start: { x: 0, y: 28 }, end: { x: 25, y: 28 }, stroke: "#111827" },
+        { id: "vout", type: "pin_stub", start: { x: 115, y: 28 }, end: { x: 140, y: 28 }, stroke: "#111827" },
+        { id: "gnd", type: "pin_stub", start: { x: 70, y: 82 }, end: { x: 70, y: 110 }, stroke: "#111827" },
         { id: "txt", type: "text", position: { x: 70, y: 48 }, text: "LDO", anchor: "middle", fontSize: 16 }
       ]
     },
@@ -48,13 +48,13 @@ export const mockSchematicGeometry: SchematicGeometry = {
         { pinId: "uart_rx", number: "17", name: "RX", anchor: { x: 0, y: 120 }, direction: "left" }
       ],
       graphics: [
-        { id: "body", type: "rect", origin: { x: 20, y: 20 }, width: 140, height: 120, stroke: "#dfe8f1" },
-        { id: "vcc", type: "pin_stub", start: { x: 90, y: 0 }, end: { x: 90, y: 20 }, stroke: "#dfe8f1" },
-        { id: "gnd", type: "pin_stub", start: { x: 90, y: 140 }, end: { x: 90, y: 160 }, stroke: "#dfe8f1" },
-        { id: "swdio", type: "pin_stub", start: { x: 160, y: 50 }, end: { x: 180, y: 50 }, stroke: "#dfe8f1" },
-        { id: "swclk", type: "pin_stub", start: { x: 160, y: 80 }, end: { x: 180, y: 80 }, stroke: "#dfe8f1" },
-        { id: "tx", type: "pin_stub", start: { x: 160, y: 120 }, end: { x: 180, y: 120 }, stroke: "#dfe8f1" },
-        { id: "rx", type: "pin_stub", start: { x: 0, y: 120 }, end: { x: 20, y: 120 }, stroke: "#dfe8f1" },
+        { id: "body", type: "rect", origin: { x: 20, y: 20 }, width: 140, height: 120, stroke: "#111827" },
+        { id: "vcc", type: "pin_stub", start: { x: 90, y: 0 }, end: { x: 90, y: 20 }, stroke: "#111827" },
+        { id: "gnd", type: "pin_stub", start: { x: 90, y: 140 }, end: { x: 90, y: 160 }, stroke: "#111827" },
+        { id: "swdio", type: "pin_stub", start: { x: 160, y: 50 }, end: { x: 180, y: 50 }, stroke: "#111827" },
+        { id: "swclk", type: "pin_stub", start: { x: 160, y: 80 }, end: { x: 180, y: 80 }, stroke: "#111827" },
+        { id: "tx", type: "pin_stub", start: { x: 160, y: 120 }, end: { x: 180, y: 120 }, stroke: "#111827" },
+        { id: "rx", type: "pin_stub", start: { x: 0, y: 120 }, end: { x: 20, y: 120 }, stroke: "#111827" },
         { id: "txt", type: "text", position: { x: 90, y: 82 }, text: "MCU", anchor: "middle", fontSize: 18 }
       ]
     },
@@ -68,10 +68,10 @@ export const mockSchematicGeometry: SchematicGeometry = {
         { pinId: "gnd", number: "3", name: "GND", anchor: { x: 0, y: 90 }, direction: "left" }
       ],
       graphics: [
-        { id: "body", type: "rect", origin: { x: 20, y: 15 }, width: 70, height: 90, stroke: "#dfe8f1" },
-        { id: "swdio", type: "pin_stub", start: { x: 0, y: 30 }, end: { x: 20, y: 30 }, stroke: "#dfe8f1" },
-        { id: "swclk", type: "pin_stub", start: { x: 0, y: 60 }, end: { x: 20, y: 60 }, stroke: "#dfe8f1" },
-        { id: "gnd", type: "pin_stub", start: { x: 0, y: 90 }, end: { x: 20, y: 90 }, stroke: "#dfe8f1" },
+        { id: "body", type: "rect", origin: { x: 20, y: 15 }, width: 70, height: 90, stroke: "#111827" },
+        { id: "swdio", type: "pin_stub", start: { x: 0, y: 30 }, end: { x: 20, y: 30 }, stroke: "#111827" },
+        { id: "swclk", type: "pin_stub", start: { x: 0, y: 60 }, end: { x: 20, y: 60 }, stroke: "#111827" },
+        { id: "gnd", type: "pin_stub", start: { x: 0, y: 90 }, end: { x: 20, y: 90 }, stroke: "#111827" },
         { id: "txt", type: "text", position: { x: 55, y: 62 }, text: "SWD", anchor: "middle", fontSize: 14 }
       ]
     }
