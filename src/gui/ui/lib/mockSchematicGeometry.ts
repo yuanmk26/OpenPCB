@@ -8,8 +8,8 @@ export const mockSchematicGeometry: SchematicGeometry = {
       name: "USB-C Input",
       bounds: { x: 0, y: 0, width: 110, height: 90 },
       pins: [
-        { pinId: "vbus", name: "VBUS", anchor: { x: 110, y: 20 }, direction: "right" },
-        { pinId: "gnd", name: "GND", anchor: { x: 110, y: 70 }, direction: "right" }
+        { pinId: "vbus", number: "A4", name: "VBUS", anchor: { x: 110, y: 20 }, direction: "right" },
+        { pinId: "gnd", number: "A1", name: "GND", anchor: { x: 110, y: 70 }, direction: "right" }
       ],
       graphics: [
         { id: "body", type: "rect", origin: { x: 10, y: 10 }, width: 80, height: 70, stroke: "#dfe8f1" },
@@ -23,9 +23,9 @@ export const mockSchematicGeometry: SchematicGeometry = {
       name: "LDO Regulator",
       bounds: { x: 0, y: 0, width: 140, height: 110 },
       pins: [
-        { pinId: "vin", name: "VIN", anchor: { x: 0, y: 28 }, direction: "left" },
-        { pinId: "gnd", name: "GND", anchor: { x: 70, y: 110 }, direction: "down" },
-        { pinId: "vout", name: "VOUT", anchor: { x: 140, y: 28 }, direction: "right" }
+        { pinId: "vin", number: "1", name: "VIN", anchor: { x: 0, y: 28 }, direction: "left" },
+        { pinId: "gnd", number: "2", name: "GND", anchor: { x: 70, y: 110 }, direction: "down" },
+        { pinId: "vout", number: "3", name: "VOUT", anchor: { x: 140, y: 28 }, direction: "right" }
       ],
       graphics: [
         { id: "body", type: "rect", origin: { x: 25, y: 12 }, width: 90, height: 70, stroke: "#dfe8f1" },
@@ -40,12 +40,12 @@ export const mockSchematicGeometry: SchematicGeometry = {
       name: "MCU",
       bounds: { x: 0, y: 0, width: 180, height: 160 },
       pins: [
-        { pinId: "vcc", name: "VCC", anchor: { x: 90, y: 0 }, direction: "up" },
-        { pinId: "gnd", name: "GND", anchor: { x: 90, y: 160 }, direction: "down" },
-        { pinId: "swdio", name: "SWDIO", anchor: { x: 180, y: 50 }, direction: "right" },
-        { pinId: "swclk", name: "SWCLK", anchor: { x: 180, y: 80 }, direction: "right" },
-        { pinId: "uart_tx", name: "TX", anchor: { x: 180, y: 120 }, direction: "right" },
-        { pinId: "uart_rx", name: "RX", anchor: { x: 0, y: 120 }, direction: "left" }
+        { pinId: "vcc", number: "24", name: "VCC", anchor: { x: 90, y: 0 }, direction: "up" },
+        { pinId: "gnd", number: "12", name: "GND", anchor: { x: 90, y: 160 }, direction: "down" },
+        { pinId: "swdio", number: "34", name: "SWDIO", anchor: { x: 180, y: 50 }, direction: "right" },
+        { pinId: "swclk", number: "37", name: "SWCLK", anchor: { x: 180, y: 80 }, direction: "right" },
+        { pinId: "uart_tx", number: "18", name: "TX", anchor: { x: 180, y: 120 }, direction: "right" },
+        { pinId: "uart_rx", number: "17", name: "RX", anchor: { x: 0, y: 120 }, direction: "left" }
       ],
       graphics: [
         { id: "body", type: "rect", origin: { x: 20, y: 20 }, width: 140, height: 120, stroke: "#dfe8f1" },
@@ -63,9 +63,9 @@ export const mockSchematicGeometry: SchematicGeometry = {
       name: "Debug Header",
       bounds: { x: 0, y: 0, width: 110, height: 120 },
       pins: [
-        { pinId: "swdio", name: "SWDIO", anchor: { x: 0, y: 30 }, direction: "left" },
-        { pinId: "swclk", name: "SWCLK", anchor: { x: 0, y: 60 }, direction: "left" },
-        { pinId: "gnd", name: "GND", anchor: { x: 0, y: 90 }, direction: "left" }
+        { pinId: "swdio", number: "2", name: "SWDIO", anchor: { x: 0, y: 30 }, direction: "left" },
+        { pinId: "swclk", number: "4", name: "SWCLK", anchor: { x: 0, y: 60 }, direction: "left" },
+        { pinId: "gnd", number: "3", name: "GND", anchor: { x: 0, y: 90 }, direction: "left" }
       ],
       graphics: [
         { id: "body", type: "rect", origin: { x: 20, y: 15 }, width: 70, height: 90, stroke: "#dfe8f1" },
