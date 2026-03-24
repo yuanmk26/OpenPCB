@@ -81,6 +81,7 @@ export type GraphicPrimitive =
 
 export type SymbolPin = {
   pinId: string;
+  number: string;
   name: string;
   anchor: Point;
   direction: SymbolPinDirection;
@@ -172,8 +173,23 @@ export type ResolvedInstance = {
   transform: string;
   symbol: SymbolDefinition;
   globalPins: Record<string, Point>;
+  renderedPins: ResolvedPin[];
   refdesPosition: Point;
   valuePosition: Point;
+  isPlaceholder?: boolean;
+  placeholderMessage?: string;
+};
+
+export type ResolvedPin = {
+  pinId: string;
+  number: string;
+  name: string;
+  anchor: Point;
+  direction: SymbolPinDirection;
+  labelPosition: Point;
+  numberPosition: Point;
+  labelAnchor: "start" | "middle" | "end";
+  numberAnchor: "start" | "middle" | "end";
 };
 
 export type SchematicPageScene = {
