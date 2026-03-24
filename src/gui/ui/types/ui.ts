@@ -11,3 +11,15 @@ export type PlaceholderCard = {
   title: string;
   description: string;
 };
+
+export type SelectedSchematicComponent = {
+  instanceId: string;
+  refdes: string;
+  value: string;
+  symbolId: string;
+  symbolName: string;
+  pageId: string;
+  pageTitle: string;
+  isPlaceholder: boolean;
+  statusMessage?: string;
+};

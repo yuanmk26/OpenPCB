@@ -257,6 +257,14 @@
   fill: #7f1d1d;
 }
 
+.schematic-instance-hitbox {
+  cursor: pointer;
+}
+
+.schematic-instance-selection {
+  pointer-events: none;
+}
+
 .schematic-marker-text {
   font-weight: 700;
   fill: #111827;
@@ -295,6 +303,84 @@
 
 .right-card {
   min-height: 172px;
+}
+
+.schematic-component-panel {
+  min-height: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.schematic-component-panel.is-empty {
+  align-content: start;
+}
+
+.schematic-component-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.schematic-component-panel-header h3 {
+  margin: 0;
+}
+
+.schematic-component-badge {
+  border: 1px solid #36506a;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: #1b3044;
+  color: #d4e7f9;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+
+.schematic-component-badge.is-warning {
+  border-color: #7c4a12;
+  background: #4a2f0f;
+  color: #f8ddb2;
+}
+
+.schematic-component-meta {
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.schematic-component-meta div {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid #29405a;
+  border-radius: 8px;
+  background: #122031;
+}
+
+.schematic-component-meta dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #89a3bd;
+}
+
+.schematic-component-meta dd {
+  margin: 0;
+  color: #eef6ff;
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.schematic-component-status {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #5f3a12;
+  background: #3a260f;
+  color: #f7d4a5;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 @media (max-width: 1180px) {

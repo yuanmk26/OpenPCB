@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type MouseEvent as ReactMouseEvent, type WheelEvent as ReactWheelEvent } from "react";
 import { buildSchematicScene, fitViewportToContent, fitViewportToPage, getPageScene } from "@/lib/schematicScene";
 import {
   SCHEMATIC_PAGE_FRAME_INSET,
@@ -11,6 +11,7 @@ import {
   su
 } from "@/lib/schematicMetrics";
 import { loadSchematicGeometry } from "@/lib/schematicPreview";
+import type { SelectedSchematicComponent } from "@/types/ui";
 import type {
   GraphicPrimitive,
   Point,
@@ -25,15 +26,23 @@ const GRID_STEP = SCHEMATIC_PAGE_GRID_STEP;
 const DRAG_PAN_MIN_FACTOR = 0.005;
 const DRAG_PAN_MAX_FACTOR = 0.15;
 const DRAG_PAN_CURVE_SCALE = 2;
+const CLICK_MOVE_TOLERANCE = 4;
 
-export function SchematicPreview() {
+type SchematicPreviewProps = {
+  selectedInstanceId: string | null;
+  onSelectComponent: (component: SelectedSchematicComponent | null) => void;
+};
+
+export function SchematicPreview({ selectedInstanceId, onSelectComponent }: SchematicPreviewProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<SVGSVGElement | null>(null);
-  const dragState = useRef<{ active: boolean; pointerId: number; last: Point }>({
+  const dragState = useRef<{ active: boolean; pointerId: number; last: Point; moved: boolean }>({
     active: false,
     pointerId: -1,
-    last: { x: 0, y: 0 }
+    last: { x: 0, y: 0 },
+    moved: false
   });
+  const suppressCanvasClickRef = useRef(false);
   const [scene, setScene] = useState<SchematicScene | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +148,7 @@ export function SchematicPreview() {
 
       dragState.current.active = false;
       dragState.current.pointerId = -1;
+      dragState.current.moved = false;
     };
 
     document.addEventListener("pointerlockchange", handlePointerLockChange);
@@ -338,7 +348,8 @@ export function SchematicPreview() {
     dragState.current = {
       active: true,
       pointerId: event.pointerId,
-      last: { x: event.clientX, y: event.clientY }
+      last: { x: event.clientX, y: event.clientY },
+      moved: false
     };
     event.currentTarget.setPointerCapture(event.pointerId);
     if (document.pointerLockElement !== event.currentTarget && typeof event.currentTarget.requestPointerLock === "function") {
@@ -355,8 +366,10 @@ export function SchematicPreview() {
     const pointerLocked = document.pointerLockElement === event.currentTarget;
     const deltaX = pointerLocked ? event.movementX : event.clientX - dragState.current.last.x;
     const deltaY = pointerLocked ? event.movementY : event.clientY - dragState.current.last.y;
+    const movedDistance = Math.hypot(deltaX, deltaY);
 
     dragState.current.last = { x: event.clientX, y: event.clientY };
+    dragState.current.moved = dragState.current.moved || movedDistance > CLICK_MOVE_TOLERANCE;
 
     if (!activePage) {
       return;
@@ -375,13 +388,24 @@ export function SchematicPreview() {
   function handlePointerUp(event: ReactPointerEvent<SVGSVGElement>) {
     if (dragState.current.pointerId === event.pointerId) {
       event.preventDefault();
+      suppressCanvasClickRef.current = dragState.current.moved;
       dragState.current.active = false;
       dragState.current.pointerId = -1;
+      dragState.current.moved = false;
       event.currentTarget.releasePointerCapture(event.pointerId);
       if (document.pointerLockElement === event.currentTarget) {
         void document.exitPointerLock();
       }
     }
+  }
+
+  function handleCanvasClick() {
+    if (suppressCanvasClickRef.current) {
+      suppressCanvasClickRef.current = false;
+      return;
+    }
+
+    onSelectComponent(null);
   }
 
   if (isLoading) {
@@ -453,6 +477,7 @@ export function SchematicPreview() {
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
           onWheel={handleWheel}
+          onClick={handleCanvasClick}
         >
           <defs>
             <pattern id="schematic-grid" width={GRID_STEP} height={GRID_STEP} patternUnits="userSpaceOnUse">
@@ -484,7 +509,14 @@ export function SchematicPreview() {
               <PageFrame page={activePage} />
               <PageWires page={activePage} />
               <PageJunctions page={activePage} />
-              <PageSymbols page={activePage} />
+              <PageSymbols
+                page={activePage}
+                selectedInstanceId={selectedInstanceId}
+                onSelectComponent={(component) => {
+                  suppressCanvasClickRef.current = false;
+                  onSelectComponent(component);
+                }}
+              />
               <PageLabels page={activePage} />
               <PageMarkers page={activePage} />
               {debugEnabled ? <DiagnosticFixture /> : null}
@@ -768,11 +800,61 @@ function PageJunctions({ page }: { page: SchematicPageScene }) {
   );
 }
 
-function PageSymbols({ page }: { page: SchematicPageScene }) {
+function PageSymbols({
+  page,
+  selectedInstanceId,
+  onSelectComponent
+}: {
+  page: SchematicPageScene;
+  selectedInstanceId: string | null;
+  onSelectComponent: (component: SelectedSchematicComponent) => void;
+}) {
   return (
     <g className="schematic-layer-symbols">
       {page.instances.map((instance) => (
-        <g key={instance.instanceId}>
+        <g
+          key={instance.instanceId}
+          className={selectedInstanceId === instance.instanceId ? "schematic-instance is-selected" : "schematic-instance"}
+        >
+          <rect
+            className="schematic-instance-hitbox"
+            x={instance.bounds.x}
+            y={instance.bounds.y}
+            width={instance.bounds.width}
+            height={instance.bounds.height}
+            fill="transparent"
+            onPointerDown={(event) => {
+              event.stopPropagation();
+            }}
+            onClick={(event: ReactMouseEvent<SVGRectElement>) => {
+              event.stopPropagation();
+              onSelectComponent({
+                instanceId: instance.instanceId,
+                refdes: instance.refdes,
+                value: instance.value,
+                symbolId: instance.symbolId,
+                symbolName: instance.symbol.name,
+                pageId: page.pageId,
+                pageTitle: page.title,
+                isPlaceholder: instance.isPlaceholder ?? false,
+                statusMessage: instance.placeholderMessage
+              });
+            }}
+          />
+          {selectedInstanceId === instance.instanceId ? (
+            <rect
+              className="schematic-instance-selection"
+              x={instance.bounds.x - su(0.6)}
+              y={instance.bounds.y - su(0.6)}
+              width={instance.bounds.width + su(1.2)}
+              height={instance.bounds.height + su(1.2)}
+              rx={su(0.4)}
+              fill="#60a5fa22"
+              stroke="#2563eb"
+              strokeWidth={SCHEMATIC_STROKE.overlay}
+              vectorEffect="non-scaling-stroke"
+            />
+          ) : null}
           <g transform={instance.transform}>
             {instance.symbol.graphics.map((graphic) => (
               <SymbolGraphic key={graphic.id} primitive={graphic} symbol={instance.symbol} />

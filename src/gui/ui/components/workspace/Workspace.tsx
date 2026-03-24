@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { FilesPanel } from "@/components/placeholders/FilesPanel";
 import { SchematicPreview } from "@/components/placeholders/SchematicPreview";
 import { LayoutPreview } from "@/components/placeholders/LayoutPreview";
-import type { WorkspaceView } from "@/types/ui";
+import type { SelectedSchematicComponent, WorkspaceView } from "@/types/ui";
 
 const workspaceTabs: Array<{ id: WorkspaceView; label: string }> = [
   { id: "files", label: "Files" },
@@ -10,12 +10,28 @@ const workspaceTabs: Array<{ id: WorkspaceView; label: string }> = [
   { id: "layout", label: "Layout Preview" }
 ];
 
-export function Workspace() {
-  const [activeView, setActiveView] = useState<WorkspaceView>("files");
+type WorkspaceProps = {
+  activeView: WorkspaceView;
+  onActiveViewChange: (view: WorkspaceView) => void;
+  selectedComponent: SelectedSchematicComponent | null;
+  onSelectComponent: (component: SelectedSchematicComponent | null) => void;
+};
+
+export function Workspace({
+  activeView,
+  onActiveViewChange,
+  selectedComponent,
+  onSelectComponent
+}: WorkspaceProps) {
 
   const activePanel = useMemo(() => {
     if (activeView === "schematic") {
-      return <SchematicPreview />;
+      return (
+        <SchematicPreview
+          selectedInstanceId={selectedComponent?.instanceId ?? null}
+          onSelectComponent={onSelectComponent}
+        />
+      );
     }
 
     if (activeView === "layout") {
@@ -23,7 +39,7 @@ export function Workspace() {
     }
 
     return <FilesPanel />;
-  }, [activeView]);
+  }, [activeView, onSelectComponent, selectedComponent?.instanceId]);
 
   return (
     <main className="workspace">
@@ -37,7 +53,7 @@ export function Workspace() {
               role="tab"
               aria-selected={activeView === tab.id}
               className={`workspace-view-tab ${activeView === tab.id ? "is-active" : ""}`}
-              onClick={() => setActiveView(tab.id)}
+              onClick={() => onActiveViewChange(tab.id)}
             >
               {tab.label}
             </button>
