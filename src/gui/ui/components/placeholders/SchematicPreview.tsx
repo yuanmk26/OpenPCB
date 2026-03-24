@@ -555,18 +555,18 @@ function formatViewportPercent(scale: number): string {
 
 function getDragPanFactor(scale: number): number {
   if (scale < 0.02) {
-    return 0.2;
+    return 0.12;
   }
 
   if (scale < 0.05) {
-    return 0.35;
+    return 0.22;
   }
 
   if (scale < 0.1) {
-    return 0.5;
+    return 0.35;
   }
 
-  return 0.75;
+  return 0.55;
 }
 
 function DiagnosticFixture() {
