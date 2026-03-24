@@ -279,12 +279,17 @@ export function SchematicPreview() {
     }
 
     event.preventDefault();
+    const svg = event.currentTarget;
+    const screenMatrix = svg.getScreenCTM();
 
-    const rect = event.currentTarget.getBoundingClientRect();
-    const focusPoint = {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
-    };
+    if (!screenMatrix) {
+      return;
+    }
+
+    const svgPoint = svg.createSVGPoint();
+    svgPoint.x = event.clientX;
+    svgPoint.y = event.clientY;
+    const focusPoint = svgPoint.matrixTransform(screenMatrix.inverse());
     const zoomIn = event.deltaY < 0;
 
     setViewport((current) => {
