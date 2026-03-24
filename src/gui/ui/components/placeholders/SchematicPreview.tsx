@@ -224,15 +224,10 @@ export function SchematicPreview() {
     }
 
     setViewport((current) => {
-      const contentFitted = fitViewportToContent(
-        activePage.contentBounds ?? activePage.bounds,
-        activePage.bounds,
-        containerSize
-      );
       const zoomingIn = multiplier > 1;
       const useContentBase = current.mode === "page" && zoomingIn;
-      const baseScale = useContentBase ? contentFitted.scale : current.scale;
-      const basePan = useContentBase ? contentFitted.pan : current.pan;
+      const baseScale = current.scale;
+      const basePan = current.pan;
       const nextScale = Math.min(Math.max(Number((baseScale * multiplier).toFixed(3)), 0.25), 4);
       const center = {
         x: containerSize.width / 2,
