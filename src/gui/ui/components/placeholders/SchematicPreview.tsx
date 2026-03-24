@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type WheelEvent as ReactWheelEvent } from "react";
 import { buildSchematicScene, fitViewportToContent, fitViewportToPage, getPageScene } from "@/lib/schematicScene";
 import {
   SCHEMATIC_PAGE_FRAME_INSET,
@@ -273,6 +273,43 @@ export function SchematicPreview() {
     handleFitPage();
   }
 
+  function handleWheel(event: ReactWheelEvent<SVGSVGElement>) {
+    if (!activePage) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const rect = event.currentTarget.getBoundingClientRect();
+    const focusPoint = {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top
+    };
+    const zoomIn = event.deltaY < 0;
+
+    setViewport((current) => {
+      const pageFitted = fitViewportToPage(activePage.bounds, containerSize);
+      const minScale = Math.max(Number((pageFitted.scale * 0.9).toFixed(6)), 0.0001);
+      const wheelStep = zoomIn ? 1.15 : 1 / 1.15;
+      const nextScale = Math.min(Math.max(Number((current.scale * wheelStep).toFixed(6)), minScale), 4);
+      const worldFocus = {
+        x: (focusPoint.x - current.pan.x) / current.scale,
+        y: (focusPoint.y - current.pan.y) / current.scale
+      };
+      const nextPan = {
+        x: focusPoint.x - worldFocus.x * nextScale,
+        y: focusPoint.y - worldFocus.y * nextScale
+      };
+
+      return {
+        ...current,
+        scale: nextScale,
+        pan: clampViewportPan(activePage, containerSize, nextScale, nextPan),
+        mode: "manual"
+      };
+    });
+  }
+
   function handlePointerDown(event: ReactPointerEvent<SVGSVGElement>) {
     dragState.current = {
       active: true,
@@ -380,6 +417,7 @@ export function SchematicPreview() {
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerUp}
+          onWheel={handleWheel}
         >
           <defs>
             <pattern id="schematic-grid" width={GRID_STEP} height={GRID_STEP} patternUnits="userSpaceOnUse">
